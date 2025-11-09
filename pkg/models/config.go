@@ -59,3 +59,11 @@ type V3EngineConfig struct {
 	PrivPassphrase string
 	AuthPassphrase string
 }
+
+// RedisConfig Redis configuration
+type RedisConfig struct {
+	Host     string `yaml:"host" json:"host"`
+	Port     int    `yaml:"port" json:"port"`
+	Password string `yaml:"password" json:"password"`
+	DB       int    `yaml:"db" json:"db"`
+}
