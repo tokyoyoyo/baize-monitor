@@ -1,6 +1,7 @@
 package snmp
 
 import (
+	"baize-monitor/pkg/config"
 	"baize-monitor/pkg/models"
 	"fmt"
 	"testing"
@@ -102,19 +103,19 @@ var (
 	}
 )
 
-var mockManagerConfig = models.ResponseManagerConfig{
-	EngineFactoryConfig: &models.ResponseEngineFactoryConfig{
-		V1Config: &models.V1EngineConfig{
+var mockManagerConfig = config.ResponseManagerConfig{
+	EngineFactoryConfig: &config.ResponseEngineFactoryConfig{
+		V1Config: &config.V1EngineConfig{
 			ReadCommunity:      "public",
 			ReadWriteCommunity: "private",
 			Enabled:            true,
 		},
-		V2cConfig: &models.V2cEngineConfig{
+		V2cConfig: &config.V2cEngineConfig{
 			ReadCommunity:      "public",
 			ReadWriteCommunity: "private",
 			Enabled:            true,
 		},
-		V3Config: &models.V3EngineConfig{
+		V3Config: &config.V3EngineConfig{
 			Enabled:        true,
 			UserName:       "baize",
 			MsgFlags:       "AuthPriv",
@@ -229,11 +230,11 @@ func TestNewV1_V2cResponseEngine(t *testing.T) {
 func TestNewV3ResponseEngine(t *testing.T) {
 	noPanicCS := []struct {
 		Name string
-		Conf *models.V3EngineConfig
+		Conf *config.V3EngineConfig
 	}{
 		{
 			"Valid V3 enabled",
-			&models.V3EngineConfig{
+			&config.V3EngineConfig{
 				Enabled:        true,
 				UserName:       "baize",
 				MsgFlags:       "AuthPriv",
@@ -245,7 +246,7 @@ func TestNewV3ResponseEngine(t *testing.T) {
 		},
 		{
 			"Valid V3 disabled",
-			&models.V3EngineConfig{
+			&config.V3EngineConfig{
 				Enabled:        false,
 				UserName:       "baize",
 				MsgFlags:       "AuthPriv",
@@ -257,7 +258,7 @@ func TestNewV3ResponseEngine(t *testing.T) {
 		},
 		{
 			"inValid V3 disabled",
-			&models.V3EngineConfig{
+			&config.V3EngineConfig{
 				Enabled:        true,
 				UserName:       "baize",
 				MsgFlags:       "AuthPriv",
@@ -282,11 +283,11 @@ func TestNewV3ResponseEngine(t *testing.T) {
 
 	panicCS := []struct {
 		Name string
-		Conf *models.V3EngineConfig
+		Conf *config.V3EngineConfig
 	}{
 		{
 			"inValid V3 enabled",
-			&models.V3EngineConfig{
+			&config.V3EngineConfig{
 				Enabled:        true,
 				UserName:       "baize",
 				MsgFlags:       "iliggleAuthPriv",
@@ -298,7 +299,7 @@ func TestNewV3ResponseEngine(t *testing.T) {
 		},
 		{
 			"inValid V3 enabled",
-			&models.V3EngineConfig{
+			&config.V3EngineConfig{
 				Enabled:        true,
 				UserName:       "baize",
 				MsgFlags:       "AuthPriv",
@@ -310,7 +311,7 @@ func TestNewV3ResponseEngine(t *testing.T) {
 		},
 		{
 			"inValid V3 enabled",
-			&models.V3EngineConfig{
+			&config.V3EngineConfig{
 				Enabled:        true,
 				UserName:       "baize",
 				MsgFlags:       "AuthPriv",

@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"baize-monitor/pkg/models"
+	"baize-monitor/pkg/config"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -17,7 +17,7 @@ type RedisDistributedLocker struct {
 }
 
 // NewRedisDistributedLocker
-func NewRedisDistributedLocker(config *models.RedisConfig) (DistributedLockerInterface, error) {
+func NewRedisDistributedLocker(config *config.RedisConfig) (DistributedLockerInterface, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", config.Host, config.Port),
 		Password: config.Password,

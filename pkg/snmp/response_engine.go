@@ -1,6 +1,7 @@
 package snmp
 
 import (
+	"baize-monitor/pkg/config"
 	"baize-monitor/pkg/models"
 	"encoding/asn1"
 	"fmt"
@@ -259,7 +260,7 @@ type V3ResponseEngine struct {
 }
 
 // NewV3ResponseEngine Create v3 response engine instance
-func NewV3ResponseEngine(config *models.V3EngineConfig) *V3ResponseEngine {
+func NewV3ResponseEngine(config *config.V3EngineConfig) *V3ResponseEngine {
 	msgFlags := gosnmp.NoAuthNoPriv
 	switch config.MsgFlags {
 	case "NoAuthNoPriv":
@@ -364,7 +365,7 @@ type ResponseEngineFactory struct {
 }
 
 // NewResponseEngineFactory Create response engine factory
-func NewResponseEngineFactory(config *models.ResponseEngineFactoryConfig) *ResponseEngineFactory {
+func NewResponseEngineFactory(config *config.ResponseEngineFactoryConfig) *ResponseEngineFactory {
 	factory := &ResponseEngineFactory{
 		engines: make(map[gosnmp.SnmpVersion]SNMPResponseEngine),
 	}
@@ -406,7 +407,7 @@ type ResponseManager struct {
 }
 
 // NewResponseManager Create response manager (completely based on configuration)
-func NewResponseManager(config *models.ResponseManagerConfig) *ResponseManager {
+func NewResponseManager(config *config.ResponseManagerConfig) *ResponseManager {
 	return &ResponseManager{
 		factory: NewResponseEngineFactory(config.EngineFactoryConfig),
 	}

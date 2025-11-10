@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"baize-monitor/pkg/models"
+	"baize-monitor/pkg/config"
 	"context"
 	"testing"
 	"time"
@@ -16,8 +16,8 @@ const (
 )
 
 // getTestRedisConfig returns Redis configuration for testing
-func getTestRedisConfig() *models.RedisConfig {
-	return &models.RedisConfig{
+func getTestRedisConfig() *config.RedisConfig {
+	return &config.RedisConfig{
 		Host:     testRedisHost,
 		Port:     testRedisPort,
 		Password: testRedisPassword,
@@ -177,12 +177,8 @@ func TestNewRedisDistributedLocker(t *testing.T) {
 	}
 
 	// Test failure with invalid config - wrong port
-	invalidConfig := &models.RedisConfig{
-		Host:     testRedisHost,
-		Port:     6380, // Assuming no Redis is running on this port
-		Password: testRedisPassword,
-		DB:       testRedisDB,
-	}
+	invalidConfig := getTestRedisConfig()
+	invalidConfig.Port = 8090
 
 	_, err = NewRedisDistributedLocker(invalidConfig)
 	if err == nil {
@@ -190,12 +186,8 @@ func TestNewRedisDistributedLocker(t *testing.T) {
 	}
 
 	// Test failure with wrong password
-	wrongPasswordConfig := &models.RedisConfig{
-		Host:     testRedisHost,
-		Port:     testRedisPort,
-		Password: "wrong_password",
-		DB:       testRedisDB,
-	}
+	wrongPasswordConfig := getTestRedisConfig()
+	wrongPasswordConfig.Password = "wrong_password"
 
 	_, err = NewRedisDistributedLocker(wrongPasswordConfig)
 	if err == nil {
