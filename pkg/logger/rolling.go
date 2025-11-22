@@ -21,12 +21,18 @@ type rollingFile struct {
 }
 
 func newRollingFile(filename string, maxSizeMB, maxBackups, maxAgeDays int) *rollingFile {
-	return &rollingFile{
+	rf := &rollingFile{
 		filename:   filename,
 		maxSize:    int64(maxSizeMB) * 1024 * 1024,
 		maxBackups: maxBackups,
 		maxAge:     time.Duration(maxAgeDays) * 24 * time.Hour,
 	}
+
+	mutex.Lock()
+	rollingFiles = append(rollingFiles, rf)
+	mutex.Unlock()
+
+	return rf
 }
 
 func (r *rollingFile) Write(p []byte) (n int, err error) {
