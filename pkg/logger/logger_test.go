@@ -1,7 +1,7 @@
 package logger
 
 import (
-	"baize-monitor/pkg/models"
+	"baize-monitor/pkg/config"
 	"fmt"
 	"log/slog"
 	"os"
@@ -17,7 +17,7 @@ func TestInit(t *testing.T) {
 	globalConfig = nil
 	rollingFiles = nil
 
-	cfg := &models.LogConfig{
+	cfg := &config.LogConfig{
 		MaxSizeMB:  50,
 		MaxBackups: 10,
 		MaxAgeDays: 30,
@@ -61,7 +61,7 @@ func TestInitWithNilConfig(t *testing.T) {
 func TestInitWithDefaultValues(t *testing.T) {
 	globalConfig = nil
 
-	cfg := &models.LogConfig{
+	cfg := &config.LogConfig{
 		MaxSizeMB:  0,  // Should use default
 		MaxBackups: 0,  // Should use default
 		MaxAgeDays: 0,  // Should use default
@@ -95,7 +95,7 @@ func TestInitWithDefaultValues(t *testing.T) {
 
 func TestForModuleFileOutput(t *testing.T) {
 	tempDir := t.TempDir()
-	globalConfig = &models.LogConfig{
+	globalConfig = &config.LogConfig{
 		MaxSizeMB:  10,
 		MaxBackups: 5,
 		MaxAgeDays: 7,
@@ -127,7 +127,7 @@ func TestForModuleFileOutput(t *testing.T) {
 }
 
 func TestForModuleStdoutOutput(t *testing.T) {
-	globalConfig = &models.LogConfig{
+	globalConfig = &config.LogConfig{
 		Output: "stdout",
 		Level:  "info",
 		Format: "text",
@@ -163,7 +163,7 @@ func TestForModuleInitializationScenarios(t *testing.T) {
 		{
 			name: "No panic when globalConfig is set",
 			setup: func() {
-				globalConfig = &models.LogConfig{
+				globalConfig = &config.LogConfig{
 					Output: "stdout",
 					Level:  "info",
 					Format: "text",
@@ -219,7 +219,7 @@ func TestLogLevels(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.configLevel, func(t *testing.T) {
-			globalConfig = &models.LogConfig{
+			globalConfig = &config.LogConfig{
 				Output: "stdout",
 				Level:  tc.configLevel,
 				Format: "text",
@@ -242,7 +242,7 @@ func TestLogLevels(t *testing.T) {
 
 func TestLogFormats(t *testing.T) {
 	// Test JSON format
-	globalConfig = &models.LogConfig{
+	globalConfig = &config.LogConfig{
 		Output: "stdout",
 		Level:  "info",
 		Format: "json",
@@ -327,7 +327,7 @@ func TestSyncWithNoFiles(t *testing.T) {
 }
 
 func TestModuleNameInLogger(t *testing.T) {
-	globalConfig = &models.LogConfig{
+	globalConfig = &config.LogConfig{
 		Output: "stdout",
 		Level:  "info",
 		Format: "text",
@@ -341,7 +341,7 @@ func TestModuleNameInLogger(t *testing.T) {
 
 func TestConcurrentLoggerCreation(t *testing.T) {
 	tempDir := t.TempDir()
-	globalConfig = &models.LogConfig{
+	globalConfig = &config.LogConfig{
 		MaxSizeMB:  10,
 		MaxBackups: 5,
 		MaxAgeDays: 7,

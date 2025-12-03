@@ -1,7 +1,7 @@
 package logger
 
 import (
-	"baize-monitor/pkg/models"
+	"baize-monitor/pkg/config"
 	"fmt"
 	"io"
 	"log/slog"
@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	globalConfig *models.LogConfig
+	globalConfig *config.LogConfig
 	rollingFiles []*rollingFile
 	mutex        sync.Mutex
 )
@@ -21,7 +21,7 @@ var (
 	Snmp_logger = getLogger("snmp")
 )
 
-func loadLoggerConfig() (*models.LogConfig, error) {
+func loadLoggerConfig() (*config.LogConfig, error) {
 	// TODO: load logger config from file
 	return nil, fmt.Errorf("not implemented")
 }
@@ -37,7 +37,7 @@ func init_logger() {
 	}
 	conf, err := loadLoggerConfig()
 	if err != nil {
-		conf = models.DefaultLogConfig()
+		conf = config.DefaultLogConfig()
 	}
 
 	err = init_log_by_cfg(conf)
@@ -47,7 +47,7 @@ func init_logger() {
 }
 
 // init initializes the global logging configuration (does not create specific logger)
-func init_log_by_cfg(cfg *models.LogConfig) error {
+func init_log_by_cfg(cfg *config.LogConfig) error {
 	if cfg == nil {
 		return fmt.Errorf("invalid logger config")
 	}

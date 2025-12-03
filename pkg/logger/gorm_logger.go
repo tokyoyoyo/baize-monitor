@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"baize-monitor/pkg/models"
+	"baize-monitor/pkg/config"
 
 	"gorm.io/gorm/logger"
 )
@@ -31,7 +31,7 @@ func GetGormLogger() logger.Interface {
 // gormLogger 实现 gorm.Logger.Interface
 type gormLogger struct {
 	logger *slog.Logger
-	config *models.GORMLogConfig
+	config *config.GORMLogConfig
 }
 
 // newGormLogger 创建 GORM 专用日志实例

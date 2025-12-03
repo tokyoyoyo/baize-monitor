@@ -8,18 +8,18 @@ import (
 	"testing"
 	"time"
 
-	"baize-monitor/pkg/models"
+	"baize-monitor/pkg/config"
 
 	"gorm.io/gorm/logger"
 )
 
 // Add test-specific configuration setting function at the beginning of the test file
 func setupTestConfig() {
-	globalConfig = &models.LogConfig{
+	globalConfig = &config.LogConfig{
 		Output: "stdout",
 		Level:  "info",
 		Format: "text",
-		GORM: models.GORMLogConfig{
+		GORM: config.GORMLogConfig{
 			Enabled:                   true,
 			Level:                     "info",
 			SlowThreshold:             100 * time.Millisecond,
@@ -263,7 +263,7 @@ func TestGormLogger_getTraceLogLevel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create new configuration for each test case
-			l.config = &models.GORMLogConfig{
+			l.config = &config.GORMLogConfig{
 				Enabled:                   true,
 				Level:                     tt.level,
 				SlowThreshold:             tt.slowThreshold,
