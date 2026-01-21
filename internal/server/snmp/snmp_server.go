@@ -2,110 +2,90 @@ package snmp
 
 import (
 	"baize-monitor/pkg/config"
+	"baize-monitor/pkg/constants"
 	logger "baize-monitor/pkg/logger"
 	"baize-monitor/pkg/models"
 	pkg_snmp "baize-monitor/pkg/snmp"
 	"baize-monitor/pkg/storage"
 	"context"
 	"fmt"
-	"sync"
 	"time"
 )
 
+// TODO 调整
 var snmp_logger = logger.Snmp_logger
-
-const (
-	// PipelineBufferScale 处理管道缓冲区缩放因子
-	PipelineBufferScale = 2
-)
 
 // SNMPServer main SNMP server that coordinates all components
 type SNMPServer struct {
-	config            *config.SNMPServerConfig
-	running           bool
-	receiver          *udpReceiver
-	handler           *TrapHandler
-	distributedLocker storage.DistributedLockerInterface
-	responseMgr       pkg_snmp.ResponseManagerInterface
-	midChannel        chan *models.RawPacket
-	outChannel        chan *models.TrapMessage
-	mu                sync.RWMutex
+	running    bool
+	receiver   *UdpReceiver
+	handler    *TrapHandler
+	midChannel chan *models.RawPacket
 }
 
 // NewSNMPServer creates a new SNMP server instance
-func NewSNMPServer(config *config.SNMPServerConfig,
-	dl storage.DistributedLockerInterface,
-	rm pkg_snmp.ResponseManagerInterface,
-) (*SNMPServer, error) {
-	if config == nil {
-		return nil, fmt.Errorf("config cannot be nil")
+func NewSNMPServer(config *config.ServerConfig, locker storage.DistributedLockerInterface, responseMgr pkg_snmp.ResponseManagerInterface) (*SNMPServer, error) {
+	alterConfig := config.AlterServerConfig
+	snmpConfig := config.SNMPServerConfig
+
+	alterAddr := alterConfig.Addr
+
+	if snmpConfig.MidChannelSize <= 0 {
+		snmpConfig.MidChannelSize = 10000
 	}
-	if dl == nil {
-		return nil, fmt.Errorf("distributed locker cannot be nil")
-	}
-	if rm == nil {
-		return nil, fmt.Errorf("response manager cannot be nil")
-	}
+	midChannel := make(chan *models.RawPacket, snmpConfig.MidChannelSize)
+
+	udpReceiver := NewUDPReceiver(*snmpConfig.ReceiverConf, midChannel)
+
+	alterURL := fmt.Sprintf("http://%s%s", alterAddr, constants.AlterServerUploadURL)
+
+	httpClient := NewSimpleHTTPTrapSenderIpmi(alterURL)
+
+	trapTrapHandler := NewTrapHandler(
+		locker,
+		responseMgr,
+		midChannel,
+		httpClient,
+		snmpConfig.TrapHandlerConf,
+	)
 
 	return &SNMPServer{
-		config:            config,
-		running:           false,
-		distributedLocker: dl,
-		responseMgr:       rm,
+		running:    false,
+		receiver:   udpReceiver,
+		handler:    trapTrapHandler,
+		midChannel: midChannel,
 	}, nil
 }
 
 // Start starts the SNMP server
 func (s *SNMPServer) Start(ctx context.Context) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if s.running {
 		return fmt.Errorf("SNMP server already started")
 	}
 
-	outChannelSize := s.config.MidChannelSize * PipelineBufferScale
-	s.midChannel = make(chan *models.RawPacket, s.config.MidChannelSize)
-	s.outChannel = make(chan *models.TrapMessage, outChannelSize)
-
-	// Create handler with lock timeout
-	lockTimeout := time.Duration(s.config.TrapHandlerConf.LockTimeout)
-	s.handler = newTrapHandler(
-		s.distributedLocker,
-		s.responseMgr,
-		lockTimeout,
-		s.midChannel,
-		s.outChannel,
-	)
-
 	// Start trap handler first
-	if err := s.handler.start(s.config.TrapHandlerConf.WorkerCount); err != nil {
+	if err := s.handler.start(); err != nil {
 		return fmt.Errorf("failed to start trap handler: %w", err)
 	}
 
-	s.receiver = newUDPReceiver(s.midChannel)
+	snmp_logger.Info("SNMP server trap handler started",
+		"worker_count", s.handler.cfg.WorkerCount)
 
 	// Start UDP receiver
-	if err := s.receiver.start(int(s.config.ReceiverConf.Port)); err != nil {
+	if err := s.receiver.start(); err != nil {
 		s.handler.stop()
 		return fmt.Errorf("failed to start UDP receiver: %w", err)
 	}
+	snmp_logger.Info("SNMP server UDP receiver started",
+		"port", s.receiver.Port)
 
 	s.running = true
-	snmp_logger.Info("SNMP server started successfully",
-		"port", s.config.ReceiverConf.Port,
-		"workers", s.config.TrapHandlerConf.WorkerCount,
-		"mid_channel_size", s.config.MidChannelSize,
-		"out_channel_size", outChannelSize,
-		"lock_timeout", lockTimeout)
+	snmp_logger.Info("SNMP server started successfully")
 	return nil
 }
 
 // Stop stops the SNMP server
 func (s *SNMPServer) Stop() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if !s.running {
 		return fmt.Errorf("SNMP server already stopped")
 	}

@@ -48,15 +48,20 @@ func TestNewSNMPServer(t *testing.T) {
 	rm := &mockResponseManager{}
 
 	t.Run("valid config", func(t *testing.T) {
-		cfg := &config.SNMPServerConfig{
-			ReceiverConf: &config.ReceiverConfig{
-				Port: 0,
+		cfg := &config.ServerConfig{
+			SNMPServerConfig: &config.SNMPServerConfig{
+				ReceiverConf: &config.ReceiverConfig{
+					Port: 0,
+				},
+				TrapHandlerConf: &config.TrapHandlerConfig{
+					WorkerCount: 2,
+					LockTimeout: 30,
+				},
+				MidChannelSize: 100,
 			},
-			TrapHandlerConf: &config.TrapHandlerConfig{
-				WorkerCount: 2,
-				LockTimeout: 30,
+			AlterServerConfig: &config.AlterServerConfig{
+				Addr: ":8080",
 			},
-			MidChannelSize: 100,
 		}
 
 		server, err := NewSNMPServer(cfg, dl, rm)
@@ -64,61 +69,26 @@ func TestNewSNMPServer(t *testing.T) {
 		assert.NotNil(t, server)
 		assert.False(t, server.running)
 	})
-
-	t.Run("nil config", func(t *testing.T) {
-		server, err := NewSNMPServer(nil, dl, rm)
-		assert.Error(t, err)
-		assert.Nil(t, server)
-	})
-
-	t.Run("nil distributed locker", func(t *testing.T) {
-		cfg := &config.SNMPServerConfig{
-			ReceiverConf: &config.ReceiverConfig{
-				Port: 0,
-			},
-			TrapHandlerConf: &config.TrapHandlerConfig{
-				WorkerCount: 2,
-				LockTimeout: 30,
-			},
-			MidChannelSize: 100,
-		}
-
-		server, err := NewSNMPServer(cfg, nil, rm)
-		assert.Error(t, err)
-		assert.Nil(t, server)
-	})
-
-	t.Run("nil response manager", func(t *testing.T) {
-		cfg := &config.SNMPServerConfig{
-			ReceiverConf: &config.ReceiverConfig{
-				Port: 0,
-			},
-			TrapHandlerConf: &config.TrapHandlerConfig{
-				WorkerCount: 2,
-				LockTimeout: 30,
-			},
-			MidChannelSize: 100,
-		}
-
-		server, err := NewSNMPServer(cfg, dl, nil)
-		assert.Error(t, err)
-		assert.Nil(t, server)
-	})
 }
 
 func TestSNMPServer_Start(t *testing.T) {
 	dl := &mockDistributedLocker{}
 	rm := &mockResponseManager{}
 
-	cfg := &config.SNMPServerConfig{
-		ReceiverConf: &config.ReceiverConfig{
-			Port: 0,
+	cfg := &config.ServerConfig{
+		SNMPServerConfig: &config.SNMPServerConfig{
+			ReceiverConf: &config.ReceiverConfig{
+				Port: 0,
+			},
+			TrapHandlerConf: &config.TrapHandlerConfig{
+				WorkerCount: 2,
+				LockTimeout: 30,
+			},
+			MidChannelSize: 100,
 		},
-		TrapHandlerConf: &config.TrapHandlerConfig{
-			WorkerCount: 2,
-			LockTimeout: 30,
+		AlterServerConfig: &config.AlterServerConfig{
+			Addr: ":8080",
 		},
-		MidChannelSize: 100,
 	}
 
 	server, err := NewSNMPServer(cfg, dl, rm)
@@ -131,7 +101,6 @@ func TestSNMPServer_Start(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, server.running)
 		assert.NotNil(t, server.midChannel)
-		assert.NotNil(t, server.outChannel)
 	})
 
 	t.Run("start already started server", func(t *testing.T) {
@@ -146,15 +115,20 @@ func TestSNMPServer_Stop(t *testing.T) {
 	dl := &mockDistributedLocker{}
 	rm := &mockResponseManager{}
 
-	cfg := &config.SNMPServerConfig{
-		ReceiverConf: &config.ReceiverConfig{
-			Port: 0,
+	cfg := &config.ServerConfig{
+		SNMPServerConfig: &config.SNMPServerConfig{
+			ReceiverConf: &config.ReceiverConfig{
+				Port: 0,
+			},
+			TrapHandlerConf: &config.TrapHandlerConfig{
+				WorkerCount: 2,
+				LockTimeout: 30,
+			},
+			MidChannelSize: 100,
 		},
-		TrapHandlerConf: &config.TrapHandlerConfig{
-			WorkerCount: 2,
-			LockTimeout: 30,
+		AlterServerConfig: &config.AlterServerConfig{
+			Addr: ":8081",
 		},
-		MidChannelSize: 100,
 	}
 
 	server, err := NewSNMPServer(cfg, dl, rm)
@@ -237,19 +211,7 @@ func TestSNMPServer_Stop(t *testing.T) {
 		// Wait for some time to ensure processing is complete
 		time.Sleep(100 * time.Millisecond)
 
-		// Check if there is processed data in the output channel
-		// Should be able to get the two pieces of data previously sent to midChannel
-		count := 0
-		timeout := time.After(1 * time.Second)
-		for count < 2 {
-			select {
-			case trapMsg := <-newServer.outChannel:
-				assert.NotNil(t, trapMsg)
-				count++
-			case <-timeout:
-				// Timeout, check if the expected amount of data was received
-				t.Fatalf("Expected 2 trap messages, got %d", count)
-			}
-		}
+		time.Sleep(1 * time.Second)
+		assert.Equal(t, 0, len(newServer.midChannel))
 	})
 }

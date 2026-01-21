@@ -1,6 +1,7 @@
 package snmp
 
 import (
+	"baize-monitor/pkg/config"
 	"baize-monitor/pkg/models"
 	"fmt"
 	"net"
@@ -8,36 +9,36 @@ import (
 	"time"
 )
 
-// udpReceiver SNMP Trap receiver
-type udpReceiver struct {
-	listener *net.UDPConn
-	locker   sync.RWMutex
-	running  bool
-	wg       sync.WaitGroup
-
+// UdpReceiver SNMP Trap receiver
+type UdpReceiver struct {
+	listener   *net.UDPConn
+	running    bool
+	wg         sync.WaitGroup
 	outputChan chan *models.RawPacket
+	cfg        *config.ReceiverConfig
+	Port       int
 }
 
 // newUDPReceiver Create a new UDP receiver
-func newUDPReceiver(oc chan *models.RawPacket) *udpReceiver {
-	return &udpReceiver{
+func NewUDPReceiver(config config.ReceiverConfig, outPutC chan *models.RawPacket) *UdpReceiver {
+	return &UdpReceiver{
 		running:    false,
-		outputChan: oc,
+		cfg:        &config,
+		outputChan: outPutC,
 	}
 }
 
 // start starts the UDP receiver and begins sending packets to the output channel
-func (r *udpReceiver) start(port int) error {
-	r.locker.Lock()
-	defer r.locker.Unlock()
-
+func (r *UdpReceiver) start() error {
 	if r.running {
 		return fmt.Errorf("UDP receiver already started")
 	}
 
-	listener, err := net.ListenUDP("udp", &net.UDPAddr{Port: port})
+	r.Port = int(r.cfg.Port)
+
+	listener, err := net.ListenUDP("udp", &net.UDPAddr{Port: r.Port})
 	if err != nil {
-		return fmt.Errorf("failed to listen on UDP port %d: %w", port, err)
+		return fmt.Errorf("failed to listen on UDP port %d: %w", r.Port, err)
 	}
 	r.listener = listener
 
@@ -45,12 +46,12 @@ func (r *udpReceiver) start(port int) error {
 	r.wg.Add(1)
 	go r.receiveLoop()
 
-	snmp_logger.Info("UDP receiver started", "port", port)
+	snmp_logger.Info("UDP receiver started", "port", r.Port)
 	return nil
 }
 
 // receiveLoop continuously reads UDP packets and sends them to the output channel
-func (r *udpReceiver) receiveLoop() {
+func (r *UdpReceiver) receiveLoop() {
 	defer r.wg.Done()
 
 	buffer := make([]byte, 65507) // Maximum UDP packet size
@@ -107,10 +108,7 @@ func (r *udpReceiver) receiveLoop() {
 }
 
 // stop stops the UDP receiver
-func (r *udpReceiver) stop() error {
-	r.locker.Lock()
-	defer r.locker.Unlock()
-
+func (r *UdpReceiver) stop() error {
 	if !r.running {
 		return fmt.Errorf("UDP receiver already stopped")
 	}
@@ -146,8 +144,6 @@ func (r *udpReceiver) stop() error {
 }
 
 // isRunning returns whether the receiver is running
-func (r *udpReceiver) isRunning() bool {
-	r.locker.RLock()
-	defer r.locker.RUnlock()
+func (r *UdpReceiver) isRunning() bool {
 	return r.running
 }

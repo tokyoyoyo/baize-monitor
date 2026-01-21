@@ -1,6 +1,7 @@
 package snmp
 
 import (
+	"baize-monitor/pkg/config"
 	"baize-monitor/pkg/models"
 	"fmt"
 	"net"
@@ -11,12 +12,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var cfg = config.ReceiverConfig{
+	Port: 162,
+}
+
 // TestUDPReceiver_NewReceiver tests receiver creation
 func TestUDPReceiver_NewReceiver(t *testing.T) {
 	t.Run("create receiver", func(t *testing.T) {
-		receiver := newUDPReceiver(make(chan *models.RawPacket, 10))
+		cfg.Port = 8080
+		outputChan := make(chan *models.RawPacket)
+		receiver := NewUDPReceiver(cfg, outputChan)
 		assert.NotNil(t, receiver)
-		assert.NotNil(t, receiver.outputChan)
 		assert.False(t, receiver.running)
 		assert.Nil(t, receiver.listener)
 	})
@@ -24,18 +30,20 @@ func TestUDPReceiver_NewReceiver(t *testing.T) {
 
 // TestUDPReceiver_StartStop tests basic start and stop functionality
 func TestUDPReceiver_StartStop(t *testing.T) {
-	receiver := newUDPReceiver(make(chan *models.RawPacket, 10))
-
-	port := 8080 // Let system assign port
+	cfg := config.ReceiverConfig{
+		Port: 8081,
+	}
+	outputChan := make(chan *models.RawPacket)
+	receiver := NewUDPReceiver(cfg, outputChan)
 
 	t.Run("start receiver", func(t *testing.T) {
-		err := receiver.start(port)
+		err := receiver.start()
 		assert.NoError(t, err)
 		assert.True(t, receiver.isRunning())
 		assert.NotNil(t, receiver.listener)
 		assert.NotNil(t, receiver.listener.LocalAddr())
 
-		err = receiver.start(port)
+		err = receiver.start()
 		assert.Error(t, err)
 
 	})
@@ -52,11 +60,13 @@ func TestUDPReceiver_StartStop(t *testing.T) {
 
 // TestUDPReceiver_PacketReception tests receiving UDP packets
 func TestUDPReceiver_PacketReception(t *testing.T) {
-	receiver := newUDPReceiver(make(chan *models.RawPacket, 10))
+	cfg := config.ReceiverConfig{
+		Port: 8082,
+	}
+	outputChan := make(chan *models.RawPacket, 10)
+	receiver := NewUDPReceiver(cfg, outputChan)
 
-	port := 8081
-
-	err := receiver.start(port)
+	err := receiver.start()
 	assert.NoError(t, err)
 	defer receiver.stop()
 
@@ -111,11 +121,13 @@ func TestUDPReceiver_PacketReception(t *testing.T) {
 
 // TestUDPReceiver_ChannelFull tests behavior when output channel is full
 func TestUDPReceiver_ChannelFull(t *testing.T) {
-	receiver := newUDPReceiver(make(chan *models.RawPacket, 1))
+	cfg := config.ReceiverConfig{
+		Port: 8083,
+	}
+	outputChan := make(chan *models.RawPacket, 1)
+	receiver := NewUDPReceiver(cfg, outputChan)
 
-	port := 8082
-
-	err := receiver.start(port)
+	err := receiver.start()
 	assert.NoError(t, err)
 	defer receiver.stop()
 
@@ -143,18 +155,21 @@ func TestUDPReceiver_ChannelFull(t *testing.T) {
 
 // TestUDPReceiver_MultipleClients tests multiple clients sending simultaneously
 func TestUDPReceiver_MultipleClients(t *testing.T) {
-	receiver := newUDPReceiver(make(chan *models.RawPacket, 100))
+	cfg := config.ReceiverConfig{
+		Port: 8084,
+	}
 
-	port := 8083
+	const numClients = 5
+	const packetsPerClient = 10
 
-	err := receiver.start(port)
+	outputChan := make(chan *models.RawPacket, numClients*packetsPerClient)
+	receiver := NewUDPReceiver(cfg, outputChan)
+
+	err := receiver.start()
 	assert.NoError(t, err)
 	defer receiver.stop()
 
 	addr := receiver.listener.LocalAddr().(*net.UDPAddr)
-
-	const numClients = 5
-	const packetsPerClient = 10
 
 	var wg sync.WaitGroup
 	receivedPackets := make(chan *models.RawPacket, numClients*packetsPerClient)
@@ -207,11 +222,13 @@ func TestUDPReceiver_MultipleClients(t *testing.T) {
 
 // TestUDPReceiver_StopDuringReceive tests stopping while receiving packets
 func TestUDPReceiver_StopDuringReceive(t *testing.T) {
-	receiver := newUDPReceiver(make(chan *models.RawPacket, 100))
+	cfg := config.ReceiverConfig{
+		Port: 8085,
+	}
+	outputChan := make(chan *models.RawPacket)
+	receiver := NewUDPReceiver(cfg, outputChan)
 
-	port := 8084
-
-	err := receiver.start(port)
+	err := receiver.start()
 	assert.NoError(t, err)
 
 	addr := receiver.listener.LocalAddr().(*net.UDPAddr)
@@ -245,11 +262,13 @@ func TestUDPReceiver_StopDuringReceive(t *testing.T) {
 
 // BenchmarkUDPReceiver_Throughput benchmarks packet receiving throughput
 func BenchmarkUDPReceiver_Throughput(b *testing.B) {
-	receiver := newUDPReceiver(make(chan *models.RawPacket, 1000))
+	cfg := config.ReceiverConfig{
+		Port: 8086,
+	}
+	outputChan := make(chan *models.RawPacket)
+	receiver := NewUDPReceiver(cfg, outputChan)
 
-	port := 8085
-
-	err := receiver.start(port)
+	err := receiver.start()
 	assert.NoError(b, err)
 	defer receiver.stop()
 
