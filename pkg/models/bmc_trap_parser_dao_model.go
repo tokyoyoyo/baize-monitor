@@ -20,23 +20,23 @@ type BMCTrapParser struct {
 	VendorName string `json:"vendor_name" gorm:"index;size:200;not null;column:vendor_name"`
 
 	// 核心OID字段
-	AlterLevelOID     string `json:"alter_level_oid" gorm:"size:500;not null;column:alter_level_oid"`
-	AlterContentOID   string `json:"alter_content_oid" gorm:"size:500;not null;column:alter_content_oid"`
-	AlterTimeOID      string `json:"alter_time_oid" gorm:"size:500;not null;column:alter_time_oid"`
-	AlterComponentOID string `json:"alter_component_oid" gorm:"size:500;not null;column:alter_component_oid"`
+	AlertLevelOID     string `json:"alert_level_oid" gorm:"size:500;not null;column:alert_level_oid"`
+	AlertContentOID   string `json:"alert_content_oid" gorm:"size:500;not null;column:alert_content_oid"`
+	AlertTimeOID      string `json:"alert_time_oid" gorm:"size:500;not null;column:alert_time_oid"`
+	AlertComponentOID string `json:"alert_component_oid" gorm:"size:500;not null;column:alert_component_oid"`
 
 	EnableAutoClose bool   `json:"enable_auto_close" gorm:"default:false;column:enable_auto_close"`
-	AlterIndexOID   string `json:"alter_index_oid" gorm:"size:500;column:alter_index_oid"`
-	AlterStatusOID  string `json:"alter_status_oid" gorm:"size:500;column:alter_status_oid"`
+	AlertIndexOID   string `json:"alert_index_oid" gorm:"size:500;column:alert_index_oid"`
+	AlertStatusOID  string `json:"alert_status_oid" gorm:"size:500;column:alert_status_oid"`
 
-	EnableContactInterComponentAlters  bool   `json:"enable_contact_inter_component_alters" gorm:"default:false;column:enable_contact_inter_component_alters"`
+	EnableContactInterComponentAlerts  bool   `json:"enable_contact_inter_component_alerts" gorm:"default:false;column:enable_contact_inter_component_alerts"`
 	ContactInterComponentIdentifierOID string `json:"contact_inter_component_identifier_oid" gorm:"size:500;column:contact_inter_component_identifier_oid"`
 
 	TimeFormat string `json:"time_format" gorm:"size:200;not null;column:time_format"`
 
 	// 映射配置 - 使用JSONB
-	LevelMappings         map[string]AlterLevel  `json:"level_mappings" gorm:"type:jsonb;not null;default:'{}';serializer:json;column:level_mappings"`
-	StatusMappings        map[string]AlterStatus `json:"status_mappings" gorm:"type:jsonb;not null;default:'{}';serializer:json;column:status_mappings"`
+	LevelMappings         map[string]AlertLevel  `json:"level_mappings" gorm:"type:jsonb;not null;default:'{}';serializer:json;column:level_mappings"`
+	StatusMappings        map[string]AlertStatus `json:"status_mappings" gorm:"type:jsonb;not null;default:'{}';serializer:json;column:status_mappings"`
 	EnableProductNameList []string               `json:"enable_product_name_list" gorm:"type:jsonb;not null;default:'[]';serializer:json;column:enable_product_name_list"`
 	EnableHostNameList    []string               `json:"enable_host_name_list" gorm:"type:jsonb;not null;default:'[]';serializer:json;column:enable_host_name_list"`
 	ComponentMappings     map[string][]string    `json:"component_mappings" gorm:"type:jsonb;not null;default:'{}';serializer:json;column:component_mappings"`
@@ -60,16 +60,16 @@ func (p *BMCTrapParser) ToResponse() *response.BMCTrapParserResponse {
 	res.VendorName = p.VendorName
 	res.VendorCode = p.VendorCode
 
-	res.AlterLevelOID = p.AlterLevelOID
-	res.AlterContentOID = p.AlterContentOID
-	res.AlterTimeOID = p.AlterTimeOID
-	res.AlterComponentOID = p.AlterComponentOID
+	res.AlertLevelOID = p.AlertLevelOID
+	res.AlertContentOID = p.AlertContentOID
+	res.AlertTimeOID = p.AlertTimeOID
+	res.AlertComponentOID = p.AlertComponentOID
 
 	res.EnableAutoClose = p.EnableAutoClose
-	res.AlterIndexOID = p.AlterIndexOID
-	res.AlterStatusOID = p.AlterStatusOID
+	res.AlertIndexOID = p.AlertIndexOID
+	res.AlertStatusOID = p.AlertStatusOID
 
-	res.EnableContactInterComponentAlters = p.EnableContactInterComponentAlters
+	res.EnableContactInterComponentAlerts = p.EnableContactInterComponentAlerts
 	res.ContactInterComponentIdentifierOID = p.ContactInterComponentIdentifierOID
 
 	res.TimeFormat = p.TimeFormat
@@ -93,143 +93,143 @@ func (p *BMCTrapParser) ToResponse() *response.BMCTrapParserResponse {
 	return &res
 }
 
-// AlterLevel 标准告警级别枚举类型
-type AlterLevel string
+// AlertLevel 标准告警级别枚举类型
+type AlertLevel string
 
 const (
-	Critical     AlterLevel = "critical"
-	Warning      AlterLevel = "warning"
-	Info         AlterLevel = "info"
-	Notification AlterLevel = "notification"
+	Critical     AlertLevel = "critical"
+	Warning      AlertLevel = "warning"
+	Info         AlertLevel = "info"
+	Notification AlertLevel = "notification"
 )
 
-// AlterStatus 标准告警状态枚举类型
-type AlterStatus string
+// AlertStatus 标准告警状态枚举类型
+type AlertStatus string
 
 const (
-	Asserted   AlterStatus = "asserted"
-	Deasserted AlterStatus = "deasserted"
+	Asserted   AlertStatus = "asserted"
+	Deasserted AlertStatus = "deasserted"
 )
 
-type AlterComponent string
+type AlertComponent string
 
-type AlterComponentDescription struct {
-	Component                AlterComponent              `json:"component"`
+type AlertComponentDescription struct {
+	Component                AlertComponent              `json:"component"`
 	NameCN                   string                      `json:"name"`
 	NameEN                   string                      `json:"name_en"`
 	DescriptionCN            string                      `json:"description"`
 	DescriptionEN            string                      `json:"description_en"`
-	SubComponentsDescription []AlterComponentDescription `json:"sub_components"`
+	SubComponentsDescription []AlertComponentDescription `json:"sub_components"`
 }
 
 // 通用 - 未知部件
 
-const AlterComponentUnknown AlterComponent = "UNKNOWN"
+const AlertComponentUnknown AlertComponent = "UNKNOWN"
 
 const (
 	// ==================== BMC相关告警部件 ====================
 	// 处理器相关
-	BMC_AlterComponentCPU         AlterComponent = "CPU"
-	BMC_AlterComponentCPU_Core    AlterComponent = "CPU_CORE"
-	BMC_AlterComponentCPU_Thermal AlterComponent = "CPU_THERMAL"
-	BMC_AlterComponentCPU_Voltage AlterComponent = "CPU_VOLTAGE"
-	BMC_AlterComponentCPU_Power   AlterComponent = "CPU_POWER"
+	BMC_AlertComponentCPU         AlertComponent = "CPU"
+	BMC_AlertComponentCPU_Core    AlertComponent = "CPU_CORE"
+	BMC_AlertComponentCPU_Thermal AlertComponent = "CPU_THERMAL"
+	BMC_AlertComponentCPU_Voltage AlertComponent = "CPU_VOLTAGE"
+	BMC_AlertComponentCPU_Power   AlertComponent = "CPU_POWER"
 
 	// 内存相关
-	BMC_AlterComponentMemory         AlterComponent = "MEMORY"
-	BMC_AlterComponentMemory_DIMM    AlterComponent = "MEMORY_DIMM"
-	BMC_AlterComponentMemory_Channel AlterComponent = "MEMORY_CHANNEL"
-	BMC_AlterComponentMemory_Voltage AlterComponent = "MEMORY_VOLTAGE"
-	BMC_AlterComponentMemory_Thermal AlterComponent = "MEMORY_THERMAL"
-	BMC_AlterComponentMemory_ECC     AlterComponent = "MEMORY_ECC"
+	BMC_AlertComponentMemory         AlertComponent = "MEMORY"
+	BMC_AlertComponentMemory_DIMM    AlertComponent = "MEMORY_DIMM"
+	BMC_AlertComponentMemory_Channel AlertComponent = "MEMORY_CHANNEL"
+	BMC_AlertComponentMemory_Voltage AlertComponent = "MEMORY_VOLTAGE"
+	BMC_AlertComponentMemory_Thermal AlertComponent = "MEMORY_THERMAL"
+	BMC_AlertComponentMemory_ECC     AlertComponent = "MEMORY_ECC"
 
 	// 存储相关
-	BMC_AlterComponentStorage           AlterComponent = "STORAGE"
-	BMC_AlterComponentStorage_HDD       AlterComponent = "STORAGE_HDD"
-	BMC_AlterComponentStorage_SSD       AlterComponent = "STORAGE_SSD"
-	BMC_AlterComponentStorage_NVMe      AlterComponent = "STORAGE_NVME"
-	BMC_AlterComponentStorage_RAID      AlterComponent = "STORAGE_RAID"
-	BMC_AlterComponentStorage_Backplane AlterComponent = "STORAGE_BACKPLANE"
+	BMC_AlertComponentStorage           AlertComponent = "STORAGE"
+	BMC_AlertComponentStorage_HDD       AlertComponent = "STORAGE_HDD"
+	BMC_AlertComponentStorage_SSD       AlertComponent = "STORAGE_SSD"
+	BMC_AlertComponentStorage_NVMe      AlertComponent = "STORAGE_NVME"
+	BMC_AlertComponentStorage_RAID      AlertComponent = "STORAGE_RAID"
+	BMC_AlertComponentStorage_Backplane AlertComponent = "STORAGE_BACKPLANE"
 
 	// 电源相关
-	BMC_AlterComponentPower        AlterComponent = "POWER"
-	BMC_AlterComponentPower_Supply AlterComponent = "POWER_SUPPLY"
-	BMC_AlterComponentPower_Input  AlterComponent = "POWER_INPUT"
-	BMC_AlterComponentPower_Output AlterComponent = "POWER_OUTPUT"
-	BMC_AlterComponentPower_Domain AlterComponent = "POWER_DOMAIN"
+	BMC_AlertComponentPower        AlertComponent = "POWER"
+	BMC_AlertComponentPower_Supply AlertComponent = "POWER_SUPPLY"
+	BMC_AlertComponentPower_Input  AlertComponent = "POWER_INPUT"
+	BMC_AlertComponentPower_Output AlertComponent = "POWER_OUTPUT"
+	BMC_AlertComponentPower_Domain AlertComponent = "POWER_DOMAIN"
 
 	// 散热相关
-	BMC_AlterComponentCooling          AlterComponent = "COOLING"
-	BMC_AlterComponentCooling_Fan      AlterComponent = "COOLING_FAN"
-	BMC_AlterComponentCooling_FanZone  AlterComponent = "COOLING_FAN_ZONE"
-	BMC_AlterComponentCooling_Pump     AlterComponent = "COOLING_PUMP"
-	BMC_AlterComponentCooling_Radiator AlterComponent = "COOLING_RADIATOR"
+	BMC_AlertComponentCooling          AlertComponent = "COOLING"
+	BMC_AlertComponentCooling_Fan      AlertComponent = "COOLING_FAN"
+	BMC_AlertComponentCooling_FanZone  AlertComponent = "COOLING_FAN_ZONE"
+	BMC_AlertComponentCooling_Pump     AlertComponent = "COOLING_PUMP"
+	BMC_AlertComponentCooling_Radiator AlertComponent = "COOLING_RADIATOR"
 
 	// 温度传感器
-	BMC_AlterComponentTemperature         AlterComponent = "TEMPERATURE"
-	BMC_AlterComponentTemperature_Inlet   AlterComponent = "TEMPERATURE_INLET"
-	BMC_AlterComponentTemperature_Outlet  AlterComponent = "TEMPERATURE_OUTLET"
-	BMC_AlterComponentTemperature_CPU     AlterComponent = "TEMPERATURE_CPU"
-	BMC_AlterComponentTemperature_Memory  AlterComponent = "TEMPERATURE_MEMORY"
-	BMC_AlterComponentTemperature_Storage AlterComponent = "TEMPERATURE_STORAGE"
-	BMC_AlterComponentTemperature_Power   AlterComponent = "TEMPERATURE_POWER"
+	BMC_AlertComponentTemperature         AlertComponent = "TEMPERATURE"
+	BMC_AlertComponentTemperature_Inlet   AlertComponent = "TEMPERATURE_INLET"
+	BMC_AlertComponentTemperature_Outlet  AlertComponent = "TEMPERATURE_OUTLET"
+	BMC_AlertComponentTemperature_CPU     AlertComponent = "TEMPERATURE_CPU"
+	BMC_AlertComponentTemperature_Memory  AlertComponent = "TEMPERATURE_MEMORY"
+	BMC_AlertComponentTemperature_Storage AlertComponent = "TEMPERATURE_STORAGE"
+	BMC_AlertComponentTemperature_Power   AlertComponent = "TEMPERATURE_POWER"
 
 	// 主板相关
-	BMC_AlterComponentMotherboard          AlterComponent = "MOTHERBOARD"
-	BMC_AlterComponentMotherboard_VR       AlterComponent = "MOTHERBOARD_VR"
-	BMC_AlterComponentMotherboard_BIOS     AlterComponent = "MOTHERBOARD_BIOS"
-	BMC_AlterComponentMotherboard_CMOS     AlterComponent = "MOTHERBOARD_CMOS"
-	BMC_AlterComponentMotherboard_Firmware AlterComponent = "MOTHERBOARD_FIRMWARE"
+	BMC_AlertComponentMotherboard          AlertComponent = "MOTHERBOARD"
+	BMC_AlertComponentMotherboard_VR       AlertComponent = "MOTHERBOARD_VR"
+	BMC_AlertComponentMotherboard_BIOS     AlertComponent = "MOTHERBOARD_BIOS"
+	BMC_AlertComponentMotherboard_CMOS     AlertComponent = "MOTHERBOARD_CMOS"
+	BMC_AlertComponentMotherboard_Firmware AlertComponent = "MOTHERBOARD_FIRMWARE"
 
 	// PCIe相关
-	BMC_AlterComponentPCIe        AlterComponent = "PCIE"
-	BMC_AlterComponentPCIe_Slot   AlterComponent = "PCIE_SLOT"
-	BMC_AlterComponentPCIe_Device AlterComponent = "PCIE_DEVICE"
+	BMC_AlertComponentPCIe        AlertComponent = "PCIE"
+	BMC_AlertComponentPCIe_Slot   AlertComponent = "PCIE_SLOT"
+	BMC_AlertComponentPCIe_Device AlertComponent = "PCIE_DEVICE"
 
 	// 网络接口
-	BMC_AlterComponentNetwork           AlterComponent = "NETWORK"
-	BMC_AlterComponentNetwork_NIC       AlterComponent = "NETWORK_NIC"
-	BMC_AlterComponentNetwork_LOM       AlterComponent = "NETWORK_LOM"
-	BMC_AlterComponentNetwork_Interface AlterComponent = "NETWORK_INTERFACE"
+	BMC_AlertComponentNetwork           AlertComponent = "NETWORK"
+	BMC_AlertComponentNetwork_NIC       AlertComponent = "NETWORK_NIC"
+	BMC_AlertComponentNetwork_LOM       AlertComponent = "NETWORK_LOM"
+	BMC_AlertComponentNetwork_Interface AlertComponent = "NETWORK_INTERFACE"
 
 	// BMC自身
-	BMC_AlterComponentBMC_Self     AlterComponent = "BMC_SELF"
-	BMC_AlterComponentBMC_Firmware AlterComponent = "BMC_FIRMWARE"
-	BMC_AlterComponentBMC_Health   AlterComponent = "BMC_HEALTH"
+	BMC_AlertComponentBMC_Self     AlertComponent = "BMC_SELF"
+	BMC_AlertComponentBMC_Firmware AlertComponent = "BMC_FIRMWARE"
+	BMC_AlertComponentBMC_Health   AlertComponent = "BMC_HEALTH"
 )
 
 // BMC告警部件详细描述映射
-var BMCAlterComponentDescriptions = []AlterComponentDescription{
+var BMCAlertComponentDescriptions = []AlertComponentDescription{
 	// 处理器相关
-	{Component: BMC_AlterComponentCPU,
+	{Component: BMC_AlertComponentCPU,
 		NameCN:        "CPU",
 		NameEN:        "CPU",
 		DescriptionCN: "中央处理器，负责执行计算机指令",
 		DescriptionEN: "Central Processing Unit, responsible for executing computer instructions",
-		SubComponentsDescription: []AlterComponentDescription{
+		SubComponentsDescription: []AlertComponentDescription{
 			{
-				Component:     BMC_AlterComponentCPU_Core,
+				Component:     BMC_AlertComponentCPU_Core,
 				NameCN:        "CPU核心",
 				NameEN:        "CPU Core",
 				DescriptionCN: "CPU中的独立处理单元",
 				DescriptionEN: "Independent processing unit in CPU, modern CPUs typically contain multiple cores",
 			},
 			{
-				Component:     BMC_AlterComponentCPU_Thermal,
+				Component:     BMC_AlertComponentCPU_Thermal,
 				NameCN:        "CPU温度",
 				NameEN:        "CPU Temperature",
 				DescriptionCN: "CPU工作时产生的热量和温度监控",
 				DescriptionEN: "Heat and temperature monitoring generated by CPU during operation",
 			},
 			{
-				Component:     BMC_AlterComponentCPU_Voltage,
+				Component:     BMC_AlertComponentCPU_Voltage,
 				NameCN:        "CPU电压",
 				NameEN:        "CPU Voltage",
 				DescriptionCN: "CPU供电电压监控",
 				DescriptionEN: "CPU power supply voltage monitoring",
 			},
 			{
-				Component:     BMC_AlterComponentCPU_Power,
+				Component:     BMC_AlertComponentCPU_Power,
 				NameCN:        "CPU功耗",
 				NameEN:        "CPU Power Consumption",
 				DescriptionCN: "CPU消耗的电能功率",
@@ -237,42 +237,42 @@ var BMCAlterComponentDescriptions = []AlterComponentDescription{
 			},
 		},
 	},
-	{Component: BMC_AlterComponentMemory,
+	{Component: BMC_AlertComponentMemory,
 		NameCN:        "内存",
 		NameEN:        "Memory",
 		DescriptionCN: "计算机随机存取存储器",
 		DescriptionEN: "Computer Random Access Memory",
-		SubComponentsDescription: []AlterComponentDescription{
+		SubComponentsDescription: []AlertComponentDescription{
 			{
-				Component:     BMC_AlterComponentMemory_DIMM,
+				Component:     BMC_AlertComponentMemory_DIMM,
 				NameCN:        "内存条",
 				NameEN:        "Memory DIMM",
 				DescriptionCN: "双列直插式内存模块",
 				DescriptionEN: "Dual In-line Memory Module",
 			},
 			{
-				Component:     BMC_AlterComponentMemory_Channel,
+				Component:     BMC_AlertComponentMemory_Channel,
 				NameCN:        "内存通道",
 				NameEN:        "Memory Channel",
 				DescriptionCN: "内存控制器与内存模块之间的数据传输通道",
 				DescriptionEN: "Data transmission channel between memory controller and memory modules",
 			},
 			{
-				Component:     BMC_AlterComponentMemory_Voltage,
+				Component:     BMC_AlertComponentMemory_Voltage,
 				NameCN:        "内存电压",
 				NameEN:        "Memory Voltage",
 				DescriptionCN: "内存模块供电电压监控",
 				DescriptionEN: "Memory module power supply voltage monitoring",
 			},
 			{
-				Component:     BMC_AlterComponentMemory_Thermal,
+				Component:     BMC_AlertComponentMemory_Thermal,
 				NameCN:        "内存温度",
 				NameEN:        "Memory Temperature",
 				DescriptionCN: "内存模块工作温度监控",
 				DescriptionEN: "Memory module operating temperature monitoring",
 			},
 			{
-				Component:     BMC_AlterComponentMemory_ECC,
+				Component:     BMC_AlertComponentMemory_ECC,
 				NameCN:        "内存ECC错误",
 				NameEN:        "Memory ECC Error",
 				DescriptionCN: "内存错误检查和纠正功能报告的错误",
@@ -280,42 +280,42 @@ var BMCAlterComponentDescriptions = []AlterComponentDescription{
 			},
 		},
 	},
-	{Component: BMC_AlterComponentStorage,
+	{Component: BMC_AlertComponentStorage,
 		NameCN:        "存储设备",
 		NameEN:        "Storage Device",
 		DescriptionCN: "数据存储设备总称",
 		DescriptionEN: "Data storage device general term",
-		SubComponentsDescription: []AlterComponentDescription{
+		SubComponentsDescription: []AlertComponentDescription{
 			{
-				Component:     BMC_AlterComponentStorage_HDD,
+				Component:     BMC_AlertComponentStorage_HDD,
 				NameCN:        "机械硬盘",
 				NameEN:        "Hard Disk Drive",
 				DescriptionCN: "传统旋转磁盘存储设备",
 				DescriptionEN: "Traditional rotating disk storage device",
 			},
 			{
-				Component:     BMC_AlterComponentStorage_SSD,
+				Component:     BMC_AlertComponentStorage_SSD,
 				NameCN:        "固态硬盘",
 				NameEN:        "Solid State Drive",
 				DescriptionCN: "基于闪存的存储设备",
 				DescriptionEN: "Flash-based storage device",
 			},
 			{
-				Component:     BMC_AlterComponentStorage_NVMe,
+				Component:     BMC_AlertComponentStorage_NVMe,
 				NameCN:        "NVMe硬盘",
 				NameEN:        "NVMe Drive",
 				DescriptionCN: "通过PCIe接口连接的高性能固态硬盘",
 				DescriptionEN: "High-performance solid state drive connected via PCIe interface",
 			},
 			{
-				Component:     BMC_AlterComponentStorage_RAID,
+				Component:     BMC_AlertComponentStorage_RAID,
 				NameCN:        "RAID阵列",
 				NameEN:        "RAID Array",
 				DescriptionCN: "磁盘阵列存储技术",
 				DescriptionEN: "Redundant Array of Independent Disks storage technology",
 			},
 			{
-				Component:     BMC_AlterComponentStorage_Backplane,
+				Component:     BMC_AlertComponentStorage_Backplane,
 				NameCN:        "存储背板",
 				NameEN:        "Storage Backplane",
 				DescriptionCN: "连接存储设备的主板背板",
@@ -323,35 +323,35 @@ var BMCAlterComponentDescriptions = []AlterComponentDescription{
 			},
 		},
 	},
-	{Component: BMC_AlterComponentPower,
+	{Component: BMC_AlertComponentPower,
 		NameCN:        "电源模块",
 		NameEN:        "Power Module",
 		DescriptionCN: "电源管理模块总称",
 		DescriptionEN: "Power management module general term",
-		SubComponentsDescription: []AlterComponentDescription{
+		SubComponentsDescription: []AlertComponentDescription{
 			{
-				Component:     BMC_AlterComponentPower_Supply,
+				Component:     BMC_AlertComponentPower_Supply,
 				NameCN:        "电源供应器",
 				NameEN:        "Power Supply",
 				DescriptionCN: "将交流电转换为直流电的设备",
 				DescriptionEN: "Device that converts AC to DC",
 			},
 			{
-				Component:     BMC_AlterComponentPower_Input,
+				Component:     BMC_AlertComponentPower_Input,
 				NameCN:        "电源输入",
 				NameEN:        "Power Input",
 				DescriptionCN: "电源模块的输入电路",
 				DescriptionEN: "Input circuit of power module",
 			},
 			{
-				Component:     BMC_AlterComponentPower_Output,
+				Component:     BMC_AlertComponentPower_Output,
 				NameCN:        "电源输出",
 				NameEN:        "Power Output",
 				DescriptionCN: "电源模块的输出电路",
 				DescriptionEN: "Output circuit of power module",
 			},
 			{
-				Component:     BMC_AlterComponentPower_Domain,
+				Component:     BMC_AlertComponentPower_Domain,
 				NameCN:        "电源域",
 				NameEN:        "Power Domain",
 				DescriptionCN: "电源管理的不同电压域",
@@ -359,35 +359,35 @@ var BMCAlterComponentDescriptions = []AlterComponentDescription{
 			},
 		},
 	},
-	{Component: BMC_AlterComponentCooling,
+	{Component: BMC_AlertComponentCooling,
 		NameCN:        "散热系统",
 		NameEN:        "Cooling System",
 		DescriptionCN: "设备散热系统总称",
 		DescriptionEN: "Device cooling system general term",
-		SubComponentsDescription: []AlterComponentDescription{
+		SubComponentsDescription: []AlertComponentDescription{
 			{
-				Component:     BMC_AlterComponentCooling_Fan,
+				Component:     BMC_AlertComponentCooling_Fan,
 				NameCN:        "风扇",
 				NameEN:        "Fan",
 				DescriptionCN: "用于空气对流散热的风扇设备",
 				DescriptionEN: "Fan device used for air convection cooling",
 			},
 			{
-				Component:     BMC_AlterComponentCooling_FanZone,
+				Component:     BMC_AlertComponentCooling_FanZone,
 				NameCN:        "风扇区域",
 				NameEN:        "Fan Zone",
 				DescriptionCN: "一组风扇组成的散热区域",
 				DescriptionEN: "Cooling zone composed of a group of fans",
 			},
 			{
-				Component:     BMC_AlterComponentCooling_Pump,
+				Component:     BMC_AlertComponentCooling_Pump,
 				NameCN:        "水泵",
 				NameEN:        "Water Pump",
 				DescriptionCN: "液冷系统中的循环水泵",
 				DescriptionEN: "Circulating water pump in liquid cooling system",
 			},
 			{
-				Component:     BMC_AlterComponentCooling_Radiator,
+				Component:     BMC_AlertComponentCooling_Radiator,
 				NameCN:        "散热器",
 				NameEN:        "Radiator",
 				DescriptionCN: "用于散发热量的散热装置",
@@ -395,49 +395,49 @@ var BMCAlterComponentDescriptions = []AlterComponentDescription{
 			},
 		},
 	},
-	{Component: BMC_AlterComponentTemperature,
+	{Component: BMC_AlertComponentTemperature,
 		NameCN:        "温度传感器",
 		NameEN:        "Temperature Sensor",
 		DescriptionCN: "检测设备各部位温度的传感器",
 		DescriptionEN: "Sensor detecting temperatures at various parts of the device",
-		SubComponentsDescription: []AlterComponentDescription{
+		SubComponentsDescription: []AlertComponentDescription{
 			{
-				Component:     BMC_AlterComponentTemperature_Inlet,
+				Component:     BMC_AlertComponentTemperature_Inlet,
 				NameCN:        "进气口温度",
 				NameEN:        "Inlet Temperature",
 				DescriptionCN: "设备进风口处的环境温度",
 				DescriptionEN: "Ambient temperature at device air intake",
 			},
 			{
-				Component:     BMC_AlterComponentTemperature_Outlet,
+				Component:     BMC_AlertComponentTemperature_Outlet,
 				NameCN:        "出气口温度",
 				NameEN:        "Outlet Temperature",
 				DescriptionCN: "设备出风口处的热空气温度",
 				DescriptionEN: "Hot air temperature at device air outlet",
 			},
 			{
-				Component:     BMC_AlterComponentTemperature_CPU,
+				Component:     BMC_AlertComponentTemperature_CPU,
 				NameCN:        "CPU温度",
 				NameEN:        "CPU Temperature",
 				DescriptionCN: "中央处理器工作温度",
 				DescriptionEN: "Central Processing Unit operating temperature",
 			},
 			{
-				Component:     BMC_AlterComponentTemperature_Memory,
+				Component:     BMC_AlertComponentTemperature_Memory,
 				NameCN:        "内存温度",
 				NameEN:        "Memory Temperature",
 				DescriptionCN: "内存模块工作温度",
 				DescriptionEN: "Memory module operating temperature",
 			},
 			{
-				Component:     BMC_AlterComponentTemperature_Storage,
+				Component:     BMC_AlertComponentTemperature_Storage,
 				NameCN:        "存储设备温度",
 				NameEN:        "Storage Device Temperature",
 				DescriptionCN: "存储设备工作温度",
 				DescriptionEN: "Storage device operating temperature",
 			},
 			{
-				Component:     BMC_AlterComponentTemperature_Power,
+				Component:     BMC_AlertComponentTemperature_Power,
 				NameCN:        "电源温度",
 				NameEN:        "Power Supply Temperature",
 				DescriptionCN: "电源模块工作温度",
@@ -445,35 +445,35 @@ var BMCAlterComponentDescriptions = []AlterComponentDescription{
 			},
 		},
 	},
-	{Component: BMC_AlterComponentMotherboard,
+	{Component: BMC_AlertComponentMotherboard,
 		NameCN:        "主板",
 		NameEN:        "Motherboard",
 		DescriptionCN: "计算机主机板",
 		DescriptionEN: "Computer main board",
-		SubComponentsDescription: []AlterComponentDescription{
+		SubComponentsDescription: []AlertComponentDescription{
 			{
-				Component:     BMC_AlterComponentMotherboard_VR,
+				Component:     BMC_AlertComponentMotherboard_VR,
 				NameCN:        "主板电压调节器",
 				NameEN:        "Motherboard Voltage Regulator",
 				DescriptionCN: "为主板各组件提供稳定电压的调节器",
 				DescriptionEN: "Regulator providing stable voltage to motherboard components",
 			},
 			{
-				Component:     BMC_AlterComponentMotherboard_BIOS,
+				Component:     BMC_AlertComponentMotherboard_BIOS,
 				NameCN:        "BIOS固件",
 				NameEN:        "BIOS Firmware",
 				DescriptionCN: "基本输入输出系统固件",
 				DescriptionEN: "Basic Input/Output System firmware",
 			},
 			{
-				Component:     BMC_AlterComponentMotherboard_CMOS,
+				Component:     BMC_AlertComponentMotherboard_CMOS,
 				NameCN:        "CMOS电池",
 				NameEN:        "CMOS Battery",
 				DescriptionCN: "为主板CMOS芯片供电的电池",
 				DescriptionEN: "Battery powering the motherboard CMOS chip",
 			},
 			{
-				Component:     BMC_AlterComponentMotherboard_Firmware,
+				Component:     BMC_AlertComponentMotherboard_Firmware,
 				NameCN:        "主板固件",
 				NameEN:        "Motherboard Firmware",
 				DescriptionCN: "主板上的嵌入式软件系统",
@@ -481,21 +481,21 @@ var BMCAlterComponentDescriptions = []AlterComponentDescription{
 			},
 		},
 	},
-	{Component: BMC_AlterComponentPCIe,
+	{Component: BMC_AlertComponentPCIe,
 		NameCN:        "PCIe总线",
 		NameEN:        "PCIe Bus",
 		DescriptionCN: "高速串行计算机扩展总线标准",
 		DescriptionEN: "High-speed serial computer expansion bus standard",
-		SubComponentsDescription: []AlterComponentDescription{
+		SubComponentsDescription: []AlertComponentDescription{
 			{
-				Component:     BMC_AlterComponentPCIe_Slot,
+				Component:     BMC_AlertComponentPCIe_Slot,
 				NameCN:        "PCIe插槽",
 				NameEN:        "PCIe Slot",
 				DescriptionCN: "主板上PCIe扩展插槽",
 				DescriptionEN: "PCIe expansion slot on motherboard",
 			},
 			{
-				Component:     BMC_AlterComponentPCIe_Device,
+				Component:     BMC_AlertComponentPCIe_Device,
 				NameCN:        "PCIe设备",
 				NameEN:        "PCIe Device",
 				DescriptionCN: "插入PCIe插槽的扩展设备",
@@ -503,28 +503,28 @@ var BMCAlterComponentDescriptions = []AlterComponentDescription{
 			},
 		},
 	},
-	{Component: BMC_AlterComponentNetwork,
+	{Component: BMC_AlertComponentNetwork,
 		NameCN:        "网络设备",
 		NameEN:        "Network Device",
 		DescriptionCN: "网络通信设备总称",
 		DescriptionEN: "Network communication device general term",
-		SubComponentsDescription: []AlterComponentDescription{
+		SubComponentsDescription: []AlertComponentDescription{
 			{
-				Component:     BMC_AlterComponentNetwork_NIC,
+				Component:     BMC_AlertComponentNetwork_NIC,
 				NameCN:        "网络接口控制器",
 				NameEN:        "Network Interface Controller",
 				DescriptionCN: "计算机与网络连接的硬件接口",
 				DescriptionEN: "Hardware interface for computer to network connection",
 			},
 			{
-				Component:     BMC_AlterComponentNetwork_LOM,
+				Component:     BMC_AlertComponentNetwork_LOM,
 				NameCN:        "板载网络",
 				NameEN:        "LOM (LAN on Motherboard)",
 				DescriptionCN: "集成在主板上的网络接口",
 				DescriptionEN: "Network interface integrated on motherboard",
 			},
 			{
-				Component:     BMC_AlterComponentNetwork_Interface,
+				Component:     BMC_AlertComponentNetwork_Interface,
 				NameCN:        "网络接口",
 				NameEN:        "Network Interface",
 				DescriptionCN: "网络连接的逻辑或物理接口",
@@ -532,21 +532,21 @@ var BMCAlterComponentDescriptions = []AlterComponentDescription{
 			},
 		},
 	},
-	{Component: BMC_AlterComponentBMC_Self,
+	{Component: BMC_AlertComponentBMC_Self,
 		NameCN:        "BMC自身状态",
 		NameEN:        "BMC Self Status",
 		DescriptionCN: "BMC控制器自身的运行状态",
 		DescriptionEN: "Operating status of BMC controller itself",
-		SubComponentsDescription: []AlterComponentDescription{
+		SubComponentsDescription: []AlertComponentDescription{
 			{
-				Component:     BMC_AlterComponentBMC_Firmware,
+				Component:     BMC_AlertComponentBMC_Firmware,
 				NameCN:        "BMC固件",
 				NameEN:        "BMC Firmware",
 				DescriptionCN: "BMC控制器的固件系统",
 				DescriptionEN: "Firmware system of BMC controller",
 			},
 			{
-				Component:     BMC_AlterComponentBMC_Health,
+				Component:     BMC_AlertComponentBMC_Health,
 				NameCN:        "BMC健康状态",
 				NameEN:        "BMC Health Status",
 				DescriptionCN: "BMC控制器整体健康状况",

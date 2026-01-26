@@ -59,7 +59,7 @@ func TestNewSNMPServer(t *testing.T) {
 				},
 				MidChannelSize: 100,
 			},
-			AlterServerConfig: &config.AlterServerConfig{
+			AlertServerConfig: &config.AlertServerConfig{
 				Addr: ":8080",
 			},
 		}
@@ -86,7 +86,7 @@ func TestSNMPServer_Start(t *testing.T) {
 			},
 			MidChannelSize: 100,
 		},
-		AlterServerConfig: &config.AlterServerConfig{
+		AlertServerConfig: &config.AlertServerConfig{
 			Addr: ":8080",
 		},
 	}
@@ -126,7 +126,7 @@ func TestSNMPServer_Stop(t *testing.T) {
 			},
 			MidChannelSize: 100,
 		},
-		AlterServerConfig: &config.AlterServerConfig{
+		AlertServerConfig: &config.AlertServerConfig{
 			Addr: ":8081",
 		},
 	}

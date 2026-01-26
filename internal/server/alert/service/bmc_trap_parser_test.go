@@ -125,10 +125,10 @@ func TestBMCTrapParserServiceImp_validateMappings(t *testing.T) {
 	t.Run("valid mappings", func(t *testing.T) {
 		req := &request.BMCTrapParserCreate{
 			VendorName:        "TestVendor",
-			AlterLevelOID:     "1.3.6.1.4.1.2.1",
-			AlterContentOID:   "1.3.6.1.4.1.2.2",
-			AlterTimeOID:      "1.3.6.1.4.1.2.3",
-			AlterComponentOID: "1.3.6.1.4.1.2.4",
+			AlertLevelOID:     "1.3.6.1.4.1.2.1",
+			AlertContentOID:   "1.3.6.1.4.1.2.2",
+			AlertTimeOID:      "1.3.6.1.4.1.2.3",
+			AlertComponentOID: "1.3.6.1.4.1.2.4",
 			TimeFormat:        "2006-01-02 15:04:05",
 			LevelMappings: map[string]string{
 				"1": "critical",
@@ -146,10 +146,10 @@ func TestBMCTrapParserServiceImp_validateMappings(t *testing.T) {
 	t.Run("empty level mappings", func(t *testing.T) {
 		req := &request.BMCTrapParserCreate{
 			VendorName:        "TestVendor",
-			AlterLevelOID:     "1.3.6.1.4.1.2.1",
-			AlterContentOID:   "1.3.6.1.4.1.2.2",
-			AlterTimeOID:      "1.3.6.1.4.1.2.3",
-			AlterComponentOID: "1.3.6.1.4.1.2.4",
+			AlertLevelOID:     "1.3.6.1.4.1.2.1",
+			AlertContentOID:   "1.3.6.1.4.1.2.2",
+			AlertTimeOID:      "1.3.6.1.4.1.2.3",
+			AlertComponentOID: "1.3.6.1.4.1.2.4",
 			TimeFormat:        "2006-01-02 15:04:05",
 			LevelMappings:     map[string]string{},
 			ComponentMappings: map[string][]string{
@@ -164,10 +164,10 @@ func TestBMCTrapParserServiceImp_validateMappings(t *testing.T) {
 	t.Run("invalid level mapping value", func(t *testing.T) {
 		req := &request.BMCTrapParserCreate{
 			VendorName:        "TestVendor",
-			AlterLevelOID:     "1.3.6.1.4.1.2.1",
-			AlterContentOID:   "1.3.6.1.4.1.2.2",
-			AlterTimeOID:      "1.3.6.1.4.1.2.3",
-			AlterComponentOID: "1.3.6.1.4.1.2.4",
+			AlertLevelOID:     "1.3.6.1.4.1.2.1",
+			AlertContentOID:   "1.3.6.1.4.1.2.2",
+			AlertTimeOID:      "1.3.6.1.4.1.2.3",
+			AlertComponentOID: "1.3.6.1.4.1.2.4",
 			TimeFormat:        "2006-01-02 15:04:05",
 			LevelMappings: map[string]string{
 				"1": "invalid-level",
@@ -184,12 +184,12 @@ func TestBMCTrapParserServiceImp_validateMappings(t *testing.T) {
 	t.Run("enable auto close with valid status mappings", func(t *testing.T) {
 		req := &request.BMCTrapParserCreate{
 			VendorName:                         "TestVendor",
-			AlterLevelOID:                      "1.3.6.1.4.1.2.1",
-			AlterContentOID:                    "1.3.6.1.4.1.2.2",
-			AlterTimeOID:                       "1.3.6.1.4.1.2.3",
-			AlterComponentOID:                  "1.3.6.1.4.1.2.4",
-			AlterIndexOID:                      "1.3.6.1.4.1.2.5",
-			AlterStatusOID:                     "1.3.6.1.4.1.2.6",
+			AlertLevelOID:                      "1.3.6.1.4.1.2.1",
+			AlertContentOID:                    "1.3.6.1.4.1.2.2",
+			AlertTimeOID:                       "1.3.6.1.4.1.2.3",
+			AlertComponentOID:                  "1.3.6.1.4.1.2.4",
+			AlertIndexOID:                      "1.3.6.1.4.1.2.5",
+			AlertStatusOID:                     "1.3.6.1.4.1.2.6",
 			TimeFormat:                         "2006-01-02 15:04:05",
 			EnableAutoClose:                    true,
 			LevelMappings:                      map[string]string{"1": "critical"},
@@ -207,12 +207,12 @@ func TestBMCTrapParserServiceImp_validateMappings(t *testing.T) {
 	t.Run("enable auto close without status mappings", func(t *testing.T) {
 		req := &request.BMCTrapParserCreate{
 			VendorName:        "TestVendor",
-			AlterLevelOID:     "1.3.6.1.4.1.2.1",
-			AlterContentOID:   "1.3.6.1.4.1.2.2",
-			AlterTimeOID:      "1.3.6.1.4.1.2.3",
-			AlterComponentOID: "1.3.6.1.4.1.2.4",
-			AlterIndexOID:     "1.3.6.1.4.1.2.5",
-			AlterStatusOID:    "1.3.6.1.4.1.2.6",
+			AlertLevelOID:     "1.3.6.1.4.1.2.1",
+			AlertContentOID:   "1.3.6.1.4.1.2.2",
+			AlertTimeOID:      "1.3.6.1.4.1.2.3",
+			AlertComponentOID: "1.3.6.1.4.1.2.4",
+			AlertIndexOID:     "1.3.6.1.4.1.2.5",
+			AlertStatusOID:    "1.3.6.1.4.1.2.6",
 			TimeFormat:        "2006-01-02 15:04:05",
 			EnableAutoClose:   true,
 			LevelMappings:     map[string]string{"1": "critical"},
@@ -235,10 +235,10 @@ func TestBMCTrapParserServiceImp_Create(t *testing.T) {
 		req := &request.BMCTrapParserCreate{
 			ParserName:        "TestParser",
 			VendorName:        "TestVendor",
-			AlterLevelOID:     "1.3.6.1.4.1.2.1",
-			AlterContentOID:   "1.3.6.1.4.1.2.2",
-			AlterTimeOID:      "1.3.6.1.4.1.2.3",
-			AlterComponentOID: "1.3.6.1.4.1.2.4",
+			AlertLevelOID:     "1.3.6.1.4.1.2.1",
+			AlertContentOID:   "1.3.6.1.4.1.2.2",
+			AlertTimeOID:      "1.3.6.1.4.1.2.3",
+			AlertComponentOID: "1.3.6.1.4.1.2.4",
 			TimeFormat:        "2006-01-02 15:04:05",
 			LevelMappings: map[string]string{
 				"1": "critical",
@@ -256,10 +256,10 @@ func TestBMCTrapParserServiceImp_Create(t *testing.T) {
 	t.Run("invalid OID in create request", func(t *testing.T) {
 		req := &request.BMCTrapParserCreate{
 			VendorName:        "TestVendor2",
-			AlterLevelOID:     "invalid-oid",
-			AlterContentOID:   "1.3.6.1.4.1.2.2",
-			AlterTimeOID:      "1.3.6.1.4.1.2.3",
-			AlterComponentOID: "1.3.6.1.4.1.2.4",
+			AlertLevelOID:     "invalid-oid",
+			AlertContentOID:   "1.3.6.1.4.1.2.2",
+			AlertTimeOID:      "1.3.6.1.4.1.2.3",
+			AlertComponentOID: "1.3.6.1.4.1.2.4",
 			TimeFormat:        "2006-01-02 15:04:05",
 			LevelMappings: map[string]string{
 				"1": "critical",
@@ -282,10 +282,10 @@ func TestBMCTrapParserServiceImp_Update(t *testing.T) {
 	req := &request.BMCTrapParserCreate{
 		ParserName:        "TestParserForUpdate",
 		VendorName:        "TestVendor",
-		AlterLevelOID:     "1.3.6.1.4.1.2.1",
-		AlterContentOID:   "1.3.6.1.4.1.2.2",
-		AlterTimeOID:      "1.3.6.1.4.1.2.3",
-		AlterComponentOID: "1.3.6.1.4.1.2.4",
+		AlertLevelOID:     "1.3.6.1.4.1.2.1",
+		AlertContentOID:   "1.3.6.1.4.1.2.2",
+		AlertTimeOID:      "1.3.6.1.4.1.2.3",
+		AlertComponentOID: "1.3.6.1.4.1.2.4",
 		TimeFormat:        "2006-01-02 15:04:05",
 		LevelMappings: map[string]string{
 			"1": "critical",
@@ -357,7 +357,7 @@ func TestBMCTrapParserServiceImp_Update(t *testing.T) {
 		invalid := "invalid-oid"
 		updateReq := &request.BMCTrapParserUpdate{
 			ID:            parserID,
-			AlterLevelOID: &invalid,
+			AlertLevelOID: &invalid,
 		}
 
 		status, err := service.Update(updateReq)
@@ -374,10 +374,10 @@ func TestBMCTrapParserServiceImp_Delete(t *testing.T) {
 	req := &request.BMCTrapParserCreate{
 		ParserName:        "TestParserForDelete",
 		VendorName:        "TestVendor",
-		AlterLevelOID:     "1.3.6.1.4.1.2.1",
-		AlterContentOID:   "1.3.6.1.4.1.2.2",
-		AlterTimeOID:      "1.3.6.1.4.1.2.3",
-		AlterComponentOID: "1.3.6.1.4.1.2.4",
+		AlertLevelOID:     "1.3.6.1.4.1.2.1",
+		AlertContentOID:   "1.3.6.1.4.1.2.2",
+		AlertTimeOID:      "1.3.6.1.4.1.2.3",
+		AlertComponentOID: "1.3.6.1.4.1.2.4",
 		TimeFormat:        "2006-01-02 15:04:05",
 		LevelMappings: map[string]string{
 			"1": "critical",
@@ -438,10 +438,10 @@ func TestBMCTrapParserServiceImp_Activate(t *testing.T) {
 	req := &request.BMCTrapParserCreate{
 		ParserName:        "TestParserForActivate",
 		VendorName:        "TestVendor",
-		AlterLevelOID:     "1.3.6.1.4.1.2.1",
-		AlterContentOID:   "1.3.6.1.4.1.2.2",
-		AlterTimeOID:      "1.3.6.1.4.1.2.3",
-		AlterComponentOID: "1.3.6.1.4.1.2.4",
+		AlertLevelOID:     "1.3.6.1.4.1.2.1",
+		AlertContentOID:   "1.3.6.1.4.1.2.2",
+		AlertTimeOID:      "1.3.6.1.4.1.2.3",
+		AlertComponentOID: "1.3.6.1.4.1.2.4",
 		TimeFormat:        "2006-01-02 15:04:05",
 		LevelMappings: map[string]string{
 			"1": "critical",
@@ -504,10 +504,10 @@ func TestBMCTrapParserServiceImp_Activate(t *testing.T) {
 		req2 := &request.BMCTrapParserCreate{
 			ParserName:        parserName,
 			VendorName:        "TestVendor2",
-			AlterLevelOID:     "1.3.6.1.4.1.2.5",
-			AlterContentOID:   "1.3.6.1.4.1.2.6",
-			AlterTimeOID:      "1.3.6.1.4.1.2.7",
-			AlterComponentOID: "1.3.6.1.4.1.2.8",
+			AlertLevelOID:     "1.3.6.1.4.1.2.5",
+			AlertContentOID:   "1.3.6.1.4.1.2.6",
+			AlertTimeOID:      "1.3.6.1.4.1.2.7",
+			AlertComponentOID: "1.3.6.1.4.1.2.8",
 			TimeFormat:        "2006-01-02 15:04:05",
 			LevelMappings: map[string]string{
 				"1": "critical",
@@ -552,10 +552,10 @@ func TestBMCTrapParserServiceImp_Deactivate(t *testing.T) {
 	req := &request.BMCTrapParserCreate{
 		ParserName:        "TestParserForDeactivate",
 		VendorName:        "TestVendor",
-		AlterLevelOID:     "1.3.6.1.4.1.2.1",
-		AlterContentOID:   "1.3.6.1.4.1.2.2",
-		AlterTimeOID:      "1.3.6.1.4.1.2.3",
-		AlterComponentOID: "1.3.6.1.4.1.2.4",
+		AlertLevelOID:     "1.3.6.1.4.1.2.1",
+		AlertContentOID:   "1.3.6.1.4.1.2.2",
+		AlertTimeOID:      "1.3.6.1.4.1.2.3",
+		AlertComponentOID: "1.3.6.1.4.1.2.4",
 		TimeFormat:        "2006-01-02 15:04:05",
 		LevelMappings: map[string]string{
 			"1": "critical",
@@ -623,10 +623,10 @@ func TestBMCTrapParserServiceImp_List(t *testing.T) {
 	req1 := &request.BMCTrapParserCreate{
 		ParserName:        "TestParserList1",
 		VendorName:        "TestVendorA",
-		AlterLevelOID:     "1.3.6.1.4.1.2.1",
-		AlterContentOID:   "1.3.6.1.4.1.2.2",
-		AlterTimeOID:      "1.3.6.1.4.1.2.3",
-		AlterComponentOID: "1.3.6.1.4.1.2.4",
+		AlertLevelOID:     "1.3.6.1.4.1.2.1",
+		AlertContentOID:   "1.3.6.1.4.1.2.2",
+		AlertTimeOID:      "1.3.6.1.4.1.2.3",
+		AlertComponentOID: "1.3.6.1.4.1.2.4",
 		TimeFormat:        "2006-01-02 15:04:05",
 		LevelMappings: map[string]string{
 			"1": "critical",
@@ -639,10 +639,10 @@ func TestBMCTrapParserServiceImp_List(t *testing.T) {
 	req2 := &request.BMCTrapParserCreate{
 		ParserName:        "TestParserList2",
 		VendorName:        "TestVendorB",
-		AlterLevelOID:     "1.3.6.1.4.1.2.5",
-		AlterContentOID:   "1.3.6.1.4.1.2.6",
-		AlterTimeOID:      "1.3.6.1.4.1.2.7",
-		AlterComponentOID: "1.3.6.1.4.1.2.8",
+		AlertLevelOID:     "1.3.6.1.4.1.2.5",
+		AlertContentOID:   "1.3.6.1.4.1.2.6",
+		AlertTimeOID:      "1.3.6.1.4.1.2.7",
+		AlertComponentOID: "1.3.6.1.4.1.2.8",
 		TimeFormat:        "2006-01-02 15:04:05",
 		LevelMappings: map[string]string{
 			"1": "warning",
@@ -700,7 +700,7 @@ func TestBMCTrapParserServiceImp_List(t *testing.T) {
 		assert.Equal(t, 1, len(result.List))
 		assert.Equal(t, "TestParserList1", result.List[0].ParserName)
 		assert.Equal(t, "TestVendorA", result.List[0].VendorName)
-		assert.Equal(t, "1.3.6.1.4.1.2.1", result.List[0].AlterLevelOID)
+		assert.Equal(t, "1.3.6.1.4.1.2.1", result.List[0].AlertLevelOID)
 	})
 
 	t.Run("list with activation status filter", func(t *testing.T) {
@@ -735,10 +735,10 @@ func TestBMCTrapParserServiceImp_CheckParserNameExist(t *testing.T) {
 	req := &request.BMCTrapParserCreate{
 		ParserName:        "TestParserForExistCheck",
 		VendorName:        "TestVendor",
-		AlterLevelOID:     "1.3.6.1.4.1.2.1",
-		AlterContentOID:   "1.3.6.1.4.1.2.2",
-		AlterTimeOID:      "1.3.6.1.4.1.2.3",
-		AlterComponentOID: "1.3.6.1.4.1.2.4",
+		AlertLevelOID:     "1.3.6.1.4.1.2.1",
+		AlertContentOID:   "1.3.6.1.4.1.2.2",
+		AlertTimeOID:      "1.3.6.1.4.1.2.3",
+		AlertComponentOID: "1.3.6.1.4.1.2.4",
 		TimeFormat:        "2006-01-02 15:04:05",
 		LevelMappings: map[string]string{
 			"1": "critical",

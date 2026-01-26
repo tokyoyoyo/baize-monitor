@@ -57,16 +57,16 @@ func TestBMCTrapParserHandler_Create(t *testing.T) {
 				VendorName: "Dell",
 				ParserName: "Dell Parser v1",
 
-				AlterLevelOID:     "1.3.6.1.4.1.674.10892.5.4.200.10.1",
-				AlterContentOID:   "1.3.6.1.4.1.674.10892.5.4.200.10.2",
-				AlterTimeOID:      "1.3.6.1.4.1.674.10892.5.4.200.10.3",
-				AlterComponentOID: "1.3.6.1.4.1.674.10892.5.4.200.10.4",
+				AlertLevelOID:     "1.3.6.1.4.1.674.10892.5.4.200.10.1",
+				AlertContentOID:   "1.3.6.1.4.1.674.10892.5.4.200.10.2",
+				AlertTimeOID:      "1.3.6.1.4.1.674.10892.5.4.200.10.3",
+				AlertComponentOID: "1.3.6.1.4.1.674.10892.5.4.200.10.4",
 
 				EnableAutoClose: false, // Explicitly set
-				AlterIndexOID:   "a",   // Can be empty, because EnableAutoClose=false
-				AlterStatusOID:  "a",   // Same as above
+				AlertIndexOID:   "a",   // Can be empty, because EnableAutoClose=false
+				AlertStatusOID:  "a",   // Same as above
 
-				EnableContactInterComponentAlters:  false, // Explicitly set
+				EnableContactInterComponentAlerts:  false, // Explicitly set
 				ContactInterComponentIdentifierOID: "a",   // Can be empty
 
 				TimeFormat: "2006-01-02 15:04:05",
@@ -94,10 +94,10 @@ func TestBMCTrapParserHandler_Create(t *testing.T) {
 			requestBody: request.BMCTrapParserCreate{
 				VendorName:        "HP vendor",
 				ParserName:        "HP Parser v1",
-				AlterLevelOID:     "invalid.oid.format",
-				AlterContentOID:   "1.3.6.1.4.1.232.10.2",
-				AlterTimeOID:      "1.3.6.1.4.1.232.10.3",
-				AlterComponentOID: "1.3.6.1.4.1.232.10.4",
+				AlertLevelOID:     "invalid.oid.format",
+				AlertContentOID:   "1.3.6.1.4.1.232.10.2",
+				AlertTimeOID:      "1.3.6.1.4.1.232.10.3",
+				AlertComponentOID: "1.3.6.1.4.1.232.10.4",
 				TimeFormat:        "2006-01-02 15:04:05",
 				LevelMappings: map[string]string{
 					"1": "critical",
@@ -109,10 +109,10 @@ func TestBMCTrapParserHandler_Create(t *testing.T) {
 			name: "Empty vendor name",
 			requestBody: request.BMCTrapParserCreate{
 				VendorName:        "", // Empty vendor name
-				AlterLevelOID:     "1.3.6.1.4.1.674.10892.5.4.200.10.1",
-				AlterContentOID:   "1.3.6.1.4.1.674.10892.5.4.200.10.2",
-				AlterTimeOID:      "1.3.6.1.4.1.674.10892.5.4.200.10.3",
-				AlterComponentOID: "1.3.6.1.4.1.674.10892.5.4.200.10.4",
+				AlertLevelOID:     "1.3.6.1.4.1.674.10892.5.4.200.10.1",
+				AlertContentOID:   "1.3.6.1.4.1.674.10892.5.4.200.10.2",
+				AlertTimeOID:      "1.3.6.1.4.1.674.10892.5.4.200.10.3",
+				AlertComponentOID: "1.3.6.1.4.1.674.10892.5.4.200.10.4",
 				TimeFormat:        "2006-01-02 15:04:05",
 				LevelMappings: map[string]string{
 					"1": "critical",
@@ -189,10 +189,10 @@ func TestBMCTrapParserHandler_Create_DuplicateVendor(t *testing.T) {
 	validRequest := request.BMCTrapParserCreate{
 		VendorName:        "UniqueVendorTest",
 		ParserName:        "test",
-		AlterLevelOID:     "1.3.6.1.4.1.674.10892.5.4.200.10.1",
-		AlterContentOID:   "1.3.6.1.4.1.674.10892.5.4.200.10.2",
-		AlterTimeOID:      "1.3.6.1.4.1.674.10892.5.4.200.10.3",
-		AlterComponentOID: "1.3.6.1.4.1.674.10892.5.4.200.10.4",
+		AlertLevelOID:     "1.3.6.1.4.1.674.10892.5.4.200.10.1",
+		AlertContentOID:   "1.3.6.1.4.1.674.10892.5.4.200.10.2",
+		AlertTimeOID:      "1.3.6.1.4.1.674.10892.5.4.200.10.3",
+		AlertComponentOID: "1.3.6.1.4.1.674.10892.5.4.200.10.4",
 		TimeFormat:        "2006-01-02 15:04:05",
 		LevelMappings: map[string]string{
 			"1": "critical",
@@ -242,10 +242,10 @@ func TestBMCTrapParserHandler_Update(t *testing.T) {
 	createReq := request.BMCTrapParserCreate{
 		VendorName:        "UpdateTestVendor",
 		ParserName:        "Update Test Parser",
-		AlterLevelOID:     "1.3.6.1.4.1.674.10892.5.4.200.10.1",
-		AlterContentOID:   "1.3.6.1.4.1.674.10892.5.4.200.10.2",
-		AlterTimeOID:      "1.3.6.1.4.1.674.10892.5.4.200.10.3",
-		AlterComponentOID: "1.3.6.1.4.1.674.10892.5.4.200.10.4",
+		AlertLevelOID:     "1.3.6.1.4.1.674.10892.5.4.200.10.1",
+		AlertContentOID:   "1.3.6.1.4.1.674.10892.5.4.200.10.2",
+		AlertTimeOID:      "1.3.6.1.4.1.674.10892.5.4.200.10.3",
+		AlertComponentOID: "1.3.6.1.4.1.674.10892.5.4.200.10.4",
 		TimeFormat:        "2006-01-02 15:04:05",
 		LevelMappings: map[string]string{
 			"1": "critical",
@@ -275,11 +275,11 @@ func TestBMCTrapParserHandler_Update(t *testing.T) {
 
 	// Prepare update request
 	parserName := "Updated Parser Name"
-	alterOid := "1.3.6.1.4.1.674.10892.5.4.200.10.5"
+	alertOid := "1.3.6.1.4.1.674.10892.5.4.200.10.5"
 	updateReq := request.BMCTrapParserUpdate{
 		ID:            id,
 		ParserName:    &parserName,
-		AlterLevelOID: &alterOid, // Modify OID
+		AlertLevelOID: &alertOid, // Modify OID
 	}
 
 	jsonValue, _ = json.Marshal(updateReq)
@@ -306,11 +306,11 @@ func TestBMCTrapParserHandler_Update_InvalidID(t *testing.T) {
 	handler := NewBMCTrapParserHandler(testService)
 
 	parserName := "Updated Parser Name"
-	alterOid := "1.3.6.1.4.1.674.10892.5.4.200.10.5"
+	alertOid := "1.3.6.1.4.1.674.10892.5.4.200.10.5"
 	updateReq := request.BMCTrapParserUpdate{
 		ID:            99999, // Non-existent ID
 		ParserName:    &parserName,
-		AlterLevelOID: &alterOid,
+		AlertLevelOID: &alertOid,
 	}
 
 	jsonValue, _ := json.Marshal(updateReq)
@@ -336,10 +336,10 @@ func TestBMCTrapParserHandler_Delete(t *testing.T) {
 	createReq := request.BMCTrapParserCreate{
 		VendorName:        "DeleteTestVendor",
 		ParserName:        "Delete Test Parser",
-		AlterLevelOID:     "1.3.6.1.4.1.674.10892.5.4.200.10.1",
-		AlterContentOID:   "1.3.6.1.4.1.674.10892.5.4.200.10.2",
-		AlterTimeOID:      "1.3.6.1.4.1.674.10892.5.4.200.10.3",
-		AlterComponentOID: "1.3.6.1.4.1.674.10892.5.4.200.10.4",
+		AlertLevelOID:     "1.3.6.1.4.1.674.10892.5.4.200.10.1",
+		AlertContentOID:   "1.3.6.1.4.1.674.10892.5.4.200.10.2",
+		AlertTimeOID:      "1.3.6.1.4.1.674.10892.5.4.200.10.3",
+		AlertComponentOID: "1.3.6.1.4.1.674.10892.5.4.200.10.4",
 		TimeFormat:        "2006-01-02 15:04:05",
 		LevelMappings: map[string]string{
 			"1": "critical",
@@ -416,10 +416,10 @@ func TestBMCTrapParserHandler_List(t *testing.T) {
 		createReq := request.BMCTrapParserCreate{
 			VendorName:        vendor,
 			ParserName:        fmt.Sprintf("List Test Parser %d", i+1),
-			AlterLevelOID:     fmt.Sprintf("1.3.6.1.4.1.674.10892.5.4.200.10.%d", i+1),
-			AlterContentOID:   fmt.Sprintf("1.3.6.1.4.1.674.10892.5.4.200.10.%d", i+4),
-			AlterTimeOID:      fmt.Sprintf("1.3.6.1.4.1.674.10892.5.4.200.10.%d", i+7),
-			AlterComponentOID: fmt.Sprintf("1.3.6.1.4.1.674.10892.5.4.200.10.%d", i+10),
+			AlertLevelOID:     fmt.Sprintf("1.3.6.1.4.1.674.10892.5.4.200.10.%d", i+1),
+			AlertContentOID:   fmt.Sprintf("1.3.6.1.4.1.674.10892.5.4.200.10.%d", i+4),
+			AlertTimeOID:      fmt.Sprintf("1.3.6.1.4.1.674.10892.5.4.200.10.%d", i+7),
+			AlertComponentOID: fmt.Sprintf("1.3.6.1.4.1.674.10892.5.4.200.10.%d", i+10),
 			TimeFormat:        "2006-01-02 15:04:05",
 			LevelMappings: map[string]string{
 				"1": "critical",

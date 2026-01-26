@@ -25,10 +25,10 @@ type SNMPServer struct {
 
 // NewSNMPServer creates a new SNMP server instance
 func NewSNMPServer(config *config.ServerConfig, locker storage.DistributedLockerInterface, responseMgr pkg_snmp.ResponseManagerInterface) (*SNMPServer, error) {
-	alterConfig := config.AlterServerConfig
+	alertConfig := config.AlertServerConfig
 	snmpConfig := config.SNMPServerConfig
 
-	alterAddr := alterConfig.Addr
+	alertAddr := alertConfig.Addr
 
 	if snmpConfig.MidChannelSize <= 0 {
 		snmpConfig.MidChannelSize = 10000
@@ -37,9 +37,9 @@ func NewSNMPServer(config *config.ServerConfig, locker storage.DistributedLocker
 
 	udpReceiver := NewUDPReceiver(*snmpConfig.ReceiverConf, midChannel)
 
-	alterURL := fmt.Sprintf("http://%s%s", alterAddr, constants.AlterServerUploadURL)
+	alertURL := fmt.Sprintf("http://%s%s", alertAddr, constants.AlertServerUploadURL)
 
-	httpClient := NewSimpleHTTPTrapSenderIpmi(alterURL)
+	httpClient := NewSimpleHTTPTrapSenderIpmi(alertURL)
 
 	trapTrapHandler := NewTrapHandler(
 		locker,

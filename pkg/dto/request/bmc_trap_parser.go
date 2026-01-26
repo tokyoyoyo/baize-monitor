@@ -18,19 +18,19 @@ type BMCTrapParserCreate struct {
 	VendorName string `json:"vendor_name" binding:"required,min=1,max=200"`
 
 	// 核心OID字段
-	AlterLevelOID     string `json:"alter_level_oid" binding:"required,min=5,max=500"`
-	AlterContentOID   string `json:"alter_content_oid" binding:"required,min=5,max=500"`
-	AlterTimeOID      string `json:"alter_time_oid" binding:"required,min=5,max=500"`
-	AlterComponentOID string `json:"alter_component_oid" binding:"required,min=5,max=500"`
+	AlertLevelOID     string `json:"alert_level_oid" binding:"required,min=5,max=500"`
+	AlertContentOID   string `json:"alert_content_oid" binding:"required,min=5,max=500"`
+	AlertTimeOID      string `json:"alert_time_oid" binding:"required,min=5,max=500"`
+	AlertComponentOID string `json:"alert_component_oid" binding:"required,min=5,max=500"`
 
 	// 自动关闭配置
 	EnableAutoClose bool   `json:"enable_auto_close"`
-	AlterIndexOID   string `json:"alter_index_oid" binding:"required_if=EnableAutoClose true,max=500"`
-	AlterStatusOID  string `json:"alter_status_oid" binding:"required_if=EnableAutoClose true,max=500"`
+	AlertIndexOID   string `json:"alert_index_oid" binding:"required_if=EnableAutoClose true,max=500"`
+	AlertStatusOID  string `json:"alert_status_oid" binding:"required_if=EnableAutoClose true,max=500"`
 
 	// 组件间关联配置
-	EnableContactInterComponentAlters  bool   `json:"enable_contact_inter_component_alters"`
-	ContactInterComponentIdentifierOID string `json:"contact_inter_component_identifier_oid" binding:"required_if=EnableContactInterComponentAlters true,max=500"`
+	EnableContactInterComponentAlerts  bool   `json:"enable_contact_inter_component_alerts"`
+	ContactInterComponentIdentifierOID string `json:"contact_inter_component_identifier_oid" binding:"required_if=EnableContactInterComponentAlerts true,max=500"`
 
 	TimeFormat string `json:"time_format" binding:"required,max=200"`
 
@@ -58,10 +58,10 @@ func extractEnterpriseNumberWithRegex(oid string) (string, error) {
 func (req *BMCTrapParserCreate) extractAndValidateVendorCode() (string, error) {
 	// 从四个OID中提取厂商编码，确保它们一致
 	oids := []string{
-		req.AlterLevelOID,
-		req.AlterContentOID,
-		req.AlterTimeOID,
-		req.AlterComponentOID,
+		req.AlertLevelOID,
+		req.AlertContentOID,
+		req.AlertTimeOID,
+		req.AlertComponentOID,
 	}
 
 	var vendorCodes []string
@@ -98,32 +98,32 @@ func (req *BMCTrapParserCreate) ToParserRecord() (*models.BMCTrapParser, error) 
 		VendorName: strings.TrimSpace(req.VendorName),
 		VendorCode: vc,
 
-		AlterLevelOID:     strings.TrimSpace(req.AlterLevelOID),
-		AlterContentOID:   strings.TrimSpace(req.AlterContentOID),
-		AlterTimeOID:      strings.TrimSpace(req.AlterTimeOID),
-		AlterComponentOID: strings.TrimSpace(req.AlterComponentOID),
+		AlertLevelOID:     strings.TrimSpace(req.AlertLevelOID),
+		AlertContentOID:   strings.TrimSpace(req.AlertContentOID),
+		AlertTimeOID:      strings.TrimSpace(req.AlertTimeOID),
+		AlertComponentOID: strings.TrimSpace(req.AlertComponentOID),
 
 		TimeFormat: strings.TrimSpace(req.TimeFormat),
 
 		EnableAutoClose: req.EnableAutoClose,
-		AlterIndexOID:   strings.TrimSpace(req.AlterIndexOID),
-		AlterStatusOID:  strings.TrimSpace(req.AlterStatusOID),
+		AlertIndexOID:   strings.TrimSpace(req.AlertIndexOID),
+		AlertStatusOID:  strings.TrimSpace(req.AlertStatusOID),
 
-		EnableContactInterComponentAlters:  req.EnableContactInterComponentAlters,
+		EnableContactInterComponentAlerts:  req.EnableContactInterComponentAlerts,
 		ContactInterComponentIdentifierOID: strings.TrimSpace(req.ContactInterComponentIdentifierOID),
 
 		Description: strings.TrimSpace(req.Description),
 	}
 
 	// 处理映射字段
-	parser.LevelMappings = make(map[string]models.AlterLevel)
+	parser.LevelMappings = make(map[string]models.AlertLevel)
 	for k, v := range req.LevelMappings {
-		parser.LevelMappings[strings.TrimSpace(k)] = models.AlterLevel(strings.TrimSpace(v))
+		parser.LevelMappings[strings.TrimSpace(k)] = models.AlertLevel(strings.TrimSpace(v))
 	}
 
-	parser.StatusMappings = make(map[string]models.AlterStatus)
+	parser.StatusMappings = make(map[string]models.AlertStatus)
 	for k, v := range req.StatusMappings {
-		parser.StatusMappings[strings.TrimSpace(k)] = models.AlterStatus(strings.TrimSpace(v))
+		parser.StatusMappings[strings.TrimSpace(k)] = models.AlertStatus(strings.TrimSpace(v))
 	}
 
 	if req.ComponentMappings != nil {
@@ -152,15 +152,15 @@ func (req *BMCTrapParserCreate) ToParserRecord() (*models.BMCTrapParser, error) 
 func (rc *BMCTrapParserCreate) FromBMCTrapParser(parser *models.BMCTrapParser) {
 	rc.ParserName = parser.ParserName
 	rc.VendorName = parser.VendorName
-	rc.AlterLevelOID = parser.AlterLevelOID
-	rc.AlterContentOID = parser.AlterContentOID
-	rc.AlterTimeOID = parser.AlterTimeOID
-	rc.AlterComponentOID = parser.AlterComponentOID
+	rc.AlertLevelOID = parser.AlertLevelOID
+	rc.AlertContentOID = parser.AlertContentOID
+	rc.AlertTimeOID = parser.AlertTimeOID
+	rc.AlertComponentOID = parser.AlertComponentOID
 	rc.TimeFormat = parser.TimeFormat
 	rc.EnableAutoClose = parser.EnableAutoClose
-	rc.AlterIndexOID = parser.AlterIndexOID
-	rc.AlterStatusOID = parser.AlterStatusOID
-	rc.EnableContactInterComponentAlters = parser.EnableContactInterComponentAlters
+	rc.AlertIndexOID = parser.AlertIndexOID
+	rc.AlertStatusOID = parser.AlertStatusOID
+	rc.EnableContactInterComponentAlerts = parser.EnableContactInterComponentAlerts
 	rc.ContactInterComponentIdentifierOID = parser.ContactInterComponentIdentifierOID
 	rc.Description = parser.Description
 
@@ -196,16 +196,16 @@ type BMCTrapParserUpdate struct {
 	VendorName *string `json:"vendor_name,omitempty" binding:"omitempty,max=200"`
 
 	// 核心OID字段 - 使用指针表示可选更新
-	AlterLevelOID     *string `json:"alter_level_oid,omitempty" binding:"omitempty,max=500"`
-	AlterContentOID   *string `json:"alter_content_oid,omitempty" binding:"omitempty,max=500"`
-	AlterTimeOID      *string `json:"alter_time_oid,omitempty" binding:"omitempty,max=500"`
-	AlterComponentOID *string `json:"alter_component_oid,omitempty" binding:"omitempty,max=500"`
+	AlertLevelOID     *string `json:"alert_level_oid,omitempty" binding:"omitempty,max=500"`
+	AlertContentOID   *string `json:"alert_content_oid,omitempty" binding:"omitempty,max=500"`
+	AlertTimeOID      *string `json:"alert_time_oid,omitempty" binding:"omitempty,max=500"`
+	AlertComponentOID *string `json:"alert_component_oid,omitempty" binding:"omitempty,max=500"`
 
 	EnableAutoClose *bool   `json:"enable_auto_close,omitempty"`
-	AlterIndexOID   *string `json:"alter_index_oid,omitempty" binding:"omitempty,max=500"`
-	AlterStatusOID  *string `json:"alter_status_oid,omitempty" binding:"omitempty,max=500"`
+	AlertIndexOID   *string `json:"alert_index_oid,omitempty" binding:"omitempty,max=500"`
+	AlertStatusOID  *string `json:"alert_status_oid,omitempty" binding:"omitempty,max=500"`
 
-	EnableContactInterComponentAlters  *bool   `json:"enable_contact_inter_component_alters,omitempty"`
+	EnableContactInterComponentAlerts  *bool   `json:"enable_contact_inter_component_alerts,omitempty"`
 	ContactInterComponentIdentifierOID *string `json:"contact_inter_component_identifier_oid,omitempty" binding:"omitempty,max=500"`
 
 	TimeFormat *string `json:"time_format,omitempty" binding:"omitempty,max=200"`
@@ -229,31 +229,31 @@ func (ru *BMCTrapParserUpdate) UpdateParserRecord(parser *models.BMCTrapParser) 
 		parser.VendorName = *ru.VendorName
 	}
 
-	if ru.AlterLevelOID != nil {
-		parser.AlterLevelOID = *ru.AlterLevelOID
+	if ru.AlertLevelOID != nil {
+		parser.AlertLevelOID = *ru.AlertLevelOID
 	}
-	if ru.AlterContentOID != nil {
-		parser.AlterContentOID = *ru.AlterContentOID
+	if ru.AlertContentOID != nil {
+		parser.AlertContentOID = *ru.AlertContentOID
 	}
-	if ru.AlterTimeOID != nil {
-		parser.AlterTimeOID = *ru.AlterTimeOID
+	if ru.AlertTimeOID != nil {
+		parser.AlertTimeOID = *ru.AlertTimeOID
 	}
-	if ru.AlterComponentOID != nil {
-		parser.AlterComponentOID = *ru.AlterComponentOID
+	if ru.AlertComponentOID != nil {
+		parser.AlertComponentOID = *ru.AlertComponentOID
 	}
 
 	if ru.EnableAutoClose != nil {
 		parser.EnableAutoClose = *ru.EnableAutoClose
 	}
-	if ru.AlterIndexOID != nil {
-		parser.AlterIndexOID = *ru.AlterIndexOID
+	if ru.AlertIndexOID != nil {
+		parser.AlertIndexOID = *ru.AlertIndexOID
 	}
-	if ru.AlterStatusOID != nil {
-		parser.AlterStatusOID = *ru.AlterStatusOID
+	if ru.AlertStatusOID != nil {
+		parser.AlertStatusOID = *ru.AlertStatusOID
 	}
 
-	if ru.EnableContactInterComponentAlters != nil {
-		parser.EnableContactInterComponentAlters = *ru.EnableContactInterComponentAlters
+	if ru.EnableContactInterComponentAlerts != nil {
+		parser.EnableContactInterComponentAlerts = *ru.EnableContactInterComponentAlerts
 	}
 	if ru.ContactInterComponentIdentifierOID != nil {
 		parser.ContactInterComponentIdentifierOID = *ru.ContactInterComponentIdentifierOID
@@ -264,15 +264,15 @@ func (ru *BMCTrapParserUpdate) UpdateParserRecord(parser *models.BMCTrapParser) 
 	}
 
 	if ru.LevelMappings != nil {
-		parser.LevelMappings = make(map[string]models.AlterLevel)
+		parser.LevelMappings = make(map[string]models.AlertLevel)
 		for k, v := range *ru.LevelMappings {
-			parser.LevelMappings[strings.TrimSpace(k)] = models.AlterLevel(strings.TrimSpace(v))
+			parser.LevelMappings[strings.TrimSpace(k)] = models.AlertLevel(strings.TrimSpace(v))
 		}
 	}
 	if ru.StatusMappings != nil {
-		parser.StatusMappings = make(map[string]models.AlterStatus)
+		parser.StatusMappings = make(map[string]models.AlertStatus)
 		for k, v := range *ru.StatusMappings {
-			parser.StatusMappings[strings.TrimSpace(k)] = models.AlterStatus(strings.TrimSpace(v))
+			parser.StatusMappings[strings.TrimSpace(k)] = models.AlertStatus(strings.TrimSpace(v))
 		}
 	}
 

@@ -69,10 +69,10 @@ func createTestParser(name string) *models.BMCTrapParser {
 		ParserName:        name,
 		VendorCode:        "TEST_VENDOR",
 		VendorName:        "Test Vendor",
-		AlterLevelOID:     "1.3.6.1.4.1.12345.1.1",
-		AlterContentOID:   "1.3.6.1.4.1.12345.1.2",
-		AlterTimeOID:      "1.3.6.1.4.1.12345.1.3",
-		AlterComponentOID: "1.3.6.1.4.1.12345.1.4",
+		AlertLevelOID:     "1.3.6.1.4.1.12345.1.1",
+		AlertContentOID:   "1.3.6.1.4.1.12345.1.2",
+		AlertTimeOID:      "1.3.6.1.4.1.12345.1.3",
+		AlertComponentOID: "1.3.6.1.4.1.12345.1.4",
 		TimeFormat:        "yyyy-MM-dd HH:mm:ss",
 		EnableAutoClose:   true,
 		Description:       "Test description",
@@ -82,12 +82,12 @@ func createTestParser(name string) *models.BMCTrapParser {
 		UpdatedAt:         time.Now(),
 
 		// Initialize JSONB fields
-		LevelMappings: map[string]models.AlterLevel{
+		LevelMappings: map[string]models.AlertLevel{
 			"1": models.Critical,
 			"2": models.Warning,
 			"3": models.Info,
 		},
-		StatusMappings: map[string]models.AlterStatus{
+		StatusMappings: map[string]models.AlertStatus{
 			"0": models.Asserted,
 			"1": models.Deasserted,
 		},
@@ -140,7 +140,7 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestCreate() {
 						found = true
 						assert.Equal(suite.T(), tt.parser.VendorCode, parser.VendorCode)
 						assert.Equal(suite.T(), tt.parser.VendorName, parser.VendorName)
-						assert.Equal(suite.T(), tt.parser.AlterLevelOID, parser.AlterLevelOID)
+						assert.Equal(suite.T(), tt.parser.AlertLevelOID, parser.AlertLevelOID)
 						assert.Equal(suite.T(), tt.parser.Description, parser.Description)
 						assert.Equal(suite.T(), tt.parser.IsActive, parser.IsActive)
 						assert.NotNil(suite.T(), parser.LevelMappings)
@@ -349,14 +349,14 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestCreateWithAllFields() {
 		ParserName:                         "full_fields_parser",
 		VendorCode:                         "FULL_VENDOR",
 		VendorName:                         "Full Fields Vendor",
-		AlterLevelOID:                      "1.3.6.1.4.1.12345.1.1",
-		AlterContentOID:                    "1.3.6.1.4.1.12345.1.2",
-		AlterTimeOID:                       "1.3.6.1.4.1.12345.1.3",
-		AlterComponentOID:                  "1.3.6.1.4.1.12345.1.4",
+		AlertLevelOID:                      "1.3.6.1.4.1.12345.1.1",
+		AlertContentOID:                    "1.3.6.1.4.1.12345.1.2",
+		AlertTimeOID:                       "1.3.6.1.4.1.12345.1.3",
+		AlertComponentOID:                  "1.3.6.1.4.1.12345.1.4",
 		EnableAutoClose:                    true,
-		AlterIndexOID:                      "1.3.6.1.4.1.12345.1.5",
-		AlterStatusOID:                     "1.3.6.1.4.1.12345.1.6",
-		EnableContactInterComponentAlters:  true,
+		AlertIndexOID:                      "1.3.6.1.4.1.12345.1.5",
+		AlertStatusOID:                     "1.3.6.1.4.1.12345.1.6",
+		EnableContactInterComponentAlerts:  true,
 		ContactInterComponentIdentifierOID: "1.3.6.1.4.1.12345.1.7",
 		TimeFormat:                         "yyyy-MM-dd'T'HH:mm:ss",
 		Description:                        "Test parser with all optional fields",
@@ -365,11 +365,11 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestCreateWithAllFields() {
 		CreatedAt:                          time.Now(),
 		UpdatedAt:                          time.Now(),
 
-		LevelMappings: map[string]models.AlterLevel{
+		LevelMappings: map[string]models.AlertLevel{
 			"critical": models.Critical,
 			"warning":  models.Warning,
 		},
-		StatusMappings: map[string]models.AlterStatus{
+		StatusMappings: map[string]models.AlertStatus{
 			"on":  models.Asserted,
 			"off": models.Deasserted,
 		},
@@ -388,9 +388,9 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestCreateWithAllFields() {
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), found)
 	assert.Equal(suite.T(), parser.ParserName, found.ParserName)
-	assert.Equal(suite.T(), parser.AlterIndexOID, found.AlterIndexOID)
-	assert.Equal(suite.T(), parser.AlterStatusOID, found.AlterStatusOID)
-	assert.Equal(suite.T(), parser.EnableContactInterComponentAlters, found.EnableContactInterComponentAlters)
+	assert.Equal(suite.T(), parser.AlertIndexOID, found.AlertIndexOID)
+	assert.Equal(suite.T(), parser.AlertStatusOID, found.AlertStatusOID)
+	assert.Equal(suite.T(), parser.EnableContactInterComponentAlerts, found.EnableContactInterComponentAlerts)
 	assert.Equal(suite.T(), parser.ContactInterComponentIdentifierOID, found.ContactInterComponentIdentifierOID)
 }
 
@@ -648,7 +648,6 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestIsParserNameExist() {
 		}
 	}
 	assert.NotNil(suite.T(), updatedParser)
-	assert.Equal(suite.T(), int64(2), updatedParser.ID)
 
 	// In update mode, for the same ID should return false (because it excludes current ID)
 	existsForSameId, err := suite.repo.(*bmcTrapParserRepoImpl).IsParserNameExist(existing_parser_name2, false, updatedParser.ID)

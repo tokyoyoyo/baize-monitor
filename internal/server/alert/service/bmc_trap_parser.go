@@ -59,10 +59,10 @@ func (s *BMCTrapParserServiceImp) validateRequiredOIDs(req *request.BMCTrapParse
 		oid       string
 		fieldName string
 	}{
-		{strings.TrimSpace(req.AlterLevelOID), "告警级别OID"},
-		{strings.TrimSpace(req.AlterContentOID), "告警内容OID"},
-		{strings.TrimSpace(req.AlterTimeOID), "告警时间OID"},
-		{strings.TrimSpace(req.AlterComponentOID), "告警组件OID"},
+		{strings.TrimSpace(req.AlertLevelOID), "告警级别OID"},
+		{strings.TrimSpace(req.AlertContentOID), "告警内容OID"},
+		{strings.TrimSpace(req.AlertTimeOID), "告警时间OID"},
+		{strings.TrimSpace(req.AlertComponentOID), "告警组件OID"},
 	}
 
 	for _, item := range requiredOIDs {
@@ -80,8 +80,8 @@ func (s *BMCTrapParserServiceImp) validateRequiredOIDs(req *request.BMCTrapParse
 			oid       string
 			fieldName string
 		}{
-			{strings.TrimSpace(req.AlterIndexOID), "告警索引OID"},
-			{strings.TrimSpace(req.AlterStatusOID), "告警状态OID"},
+			{strings.TrimSpace(req.AlertIndexOID), "告警索引OID"},
+			{strings.TrimSpace(req.AlertStatusOID), "告警状态OID"},
 		}
 
 		for _, item := range requiredOIDs {
@@ -96,7 +96,7 @@ func (s *BMCTrapParserServiceImp) validateRequiredOIDs(req *request.BMCTrapParse
 	}
 
 	// 验证组件间关联OID
-	if req.EnableContactInterComponentAlters {
+	if req.EnableContactInterComponentAlerts {
 		if req.ContactInterComponentIdentifierOID != "" {
 			if err := s.validateOID(strings.TrimSpace(req.ContactInterComponentIdentifierOID), "组件间关联OID"); err != nil {
 				return err
@@ -141,7 +141,7 @@ func (s *BMCTrapParserServiceImp) validateMappings(req *request.BMCTrapParserCre
 			return errors.New("级别映射的键不能为空")
 		}
 		// 验证值是否是有效的告警级别
-		if !isValidAlterLevel(value) {
+		if !isValidAlertLevel(value) {
 			return fmt.Errorf("无效的告警级别：%s（键：%s）", value, key)
 		}
 	}
@@ -156,7 +156,7 @@ func (s *BMCTrapParserServiceImp) validateMappings(req *request.BMCTrapParserCre
 			if strings.TrimSpace(key) == "" {
 				return errors.New("状态映射的键不能为空")
 			}
-			if !isValidAlterStatus(value) {
+			if !isValidAlertStatus(value) {
 				return fmt.Errorf("无效的告警状态：%s（键：%s）", value, key)
 			}
 		}
@@ -165,7 +165,7 @@ func (s *BMCTrapParserServiceImp) validateMappings(req *request.BMCTrapParserCre
 	// 验证组件映射
 	if len(req.ComponentMappings) != 0 {
 		for component, identifiers := range req.ComponentMappings {
-			if !isValidAlterComponent(component) {
+			if !isValidAlertComponent(component) {
 				return fmt.Errorf("组件'%s'不合法", component)
 			}
 			if len(identifiers) == 0 {
@@ -344,9 +344,9 @@ func (s *BMCTrapParserServiceImp) List(filter *request.BMCTrapParserFilter) (res
 
 // ============ 辅助函数 ============
 
-// isValidAlterLevel 验证告警级别是否有效
-func isValidAlterLevel(level string) bool {
-	switch models.AlterLevel(level) {
+// isValidAlertLevel 验证告警级别是否有效
+func isValidAlertLevel(level string) bool {
+	switch models.AlertLevel(level) {
 	case models.Critical,
 		models.Info,
 		models.Warning,
@@ -357,9 +357,9 @@ func isValidAlterLevel(level string) bool {
 	}
 }
 
-// isValidAlterStatus 验证告警状态是否有效
-func isValidAlterStatus(status string) bool {
-	switch models.AlterStatus(status) {
+// isValidAlertStatus 验证告警状态是否有效
+func isValidAlertStatus(status string) bool {
+	switch models.AlertStatus(status) {
 	case models.Asserted,
 		models.Deasserted:
 		return true
@@ -370,9 +370,9 @@ func isValidAlterStatus(status string) bool {
 
 var componentSet = getComponentSet()
 
-func getComponentSet() map[models.AlterComponent]struct{} {
-	cs := make(map[models.AlterComponent]struct{})
-	for _, bmd := range models.BMCAlterComponentDescriptions {
+func getComponentSet() map[models.AlertComponent]struct{} {
+	cs := make(map[models.AlertComponent]struct{})
+	for _, bmd := range models.BMCAlertComponentDescriptions {
 		cs[bmd.Component] = struct{}{}
 		for _, sub := range bmd.SubComponentsDescription {
 			cs[sub.Component] = struct{}{}
@@ -381,8 +381,8 @@ func getComponentSet() map[models.AlterComponent]struct{} {
 	return cs
 }
 
-func isValidAlterComponent(component string) bool {
-	c := models.AlterComponent(component)
+func isValidAlertComponent(component string) bool {
+	c := models.AlertComponent(component)
 	_, exists := componentSet[c]
 	return exists
 }

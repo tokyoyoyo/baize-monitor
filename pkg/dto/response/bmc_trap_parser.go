@@ -16,16 +16,16 @@ type BMCTrapParserResponse struct {
 	VendorName string `json:"vendor_name"`
 
 	// 核心OID字段
-	AlterLevelOID     string `json:"alter_level_oid"`
-	AlterContentOID   string `json:"alter_content_oid"`
-	AlterTimeOID      string `json:"alter_time_oid"`
-	AlterComponentOID string `json:"alter_component_oid"`
+	AlertLevelOID     string `json:"alert_level_oid"`
+	AlertContentOID   string `json:"alert_content_oid"`
+	AlertTimeOID      string `json:"alert_time_oid"`
+	AlertComponentOID string `json:"alert_component_oid"`
 
 	EnableAutoClose bool   `json:"enable_auto_close"`
-	AlterIndexOID   string `json:"alter_index_oid,omitempty"`
-	AlterStatusOID  string `json:"alter_status_oid,omitempty"`
+	AlertIndexOID   string `json:"alert_index_oid,omitempty"`
+	AlertStatusOID  string `json:"alert_status_oid,omitempty"`
 
-	EnableContactInterComponentAlters  bool   `json:"enable_contact_inter_component_alters"`
+	EnableContactInterComponentAlerts  bool   `json:"enable_contact_inter_component_alerts"`
 	ContactInterComponentIdentifierOID string `json:"contact_inter_component_identifier_oid,omitempty"`
 
 	TimeFormat string `json:"time_format"`
