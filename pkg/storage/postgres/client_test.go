@@ -32,16 +32,11 @@ type TestProduct struct {
 
 // Mock test configuration
 func getMockTestConfig() *config.PostGresConfig {
-	return &config.PostGresConfig{
-		Host:      "localhost",
-		Port:      5432,
-		User:      "postgres",
-		Password:  "qwer1234",
-		Database:  "baize_test",
-		SSLMode:   "disable",
-		MaxConns:  10,
-		IdleConns: 5,
+	cfg, err := config.LoadTestMockServerConfig()
+	if err != nil {
+		panic(fmt.Sprintf("Unable to load test configuration: %v", err))
 	}
+	return cfg.PostGresConfig
 }
 
 // Test main entry point

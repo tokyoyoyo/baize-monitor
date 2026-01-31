@@ -1,0 +1,120 @@
+package repository
+
+import (
+	"baize-monitor/pkg/dto/request"
+	"baize-monitor/pkg/dto/response"
+	"baize-monitor/pkg/models"
+
+	"gorm.io/gorm"
+)
+
+type AlertRepo interface {
+	Create(alert *models.Alert) error
+	Update(tm *models.Alert) error
+	List(filter *request.AlterFilter) (response.AlertListResult, error)
+	FindByID(id int64) (*models.Alert, error)
+}
+
+type AlertRepoImp struct {
+	db *gorm.DB
+}
+
+func NewAlertRepoImp(db *gorm.DB) AlertRepo {
+	return &AlertRepoImp{db: db}
+}
+
+func (r *AlertRepoImp) Create(alert *models.Alert) error {
+	db := r.db.Model(alert)
+	return db.Create(alert).Error
+}
+
+func (r *AlertRepoImp) Update(alert *models.Alert) error {
+	db := r.db.Model(alert)
+	return db.Updates(alert).Error
+}
+
+func (r *AlertRepoImp) List(filter *request.AlterFilter) (response.AlertListResult, error) {
+	var alerts []*models.Alert
+	var total int64
+
+	db := r.db.Model(&models.Alert{})
+
+	// 1. 动态构建查询条件 (保持不变)
+	if filter.ParserID != nil {
+		db = db.Where("parser_id = ?", *filter.ParserID)
+	}
+	if filter.Status != nil {
+		db = db.Where("alert_status = ?", *filter.Status)
+	}
+	if filter.TrapOID != nil {
+		db = db.Where("trap_oid = ?", *filter.TrapOID)
+	}
+	if filter.SourceIP != nil {
+		db = db.Where("source_ip = ?", *filter.SourceIP)
+	}
+	if filter.VendorCode != nil {
+		db = db.Where("vendor_code = ?", *filter.VendorCode)
+	}
+	if filter.VendorName != nil {
+		db = db.Where("vendor_name LIKE ?", "%"+*filter.VendorName+"%")
+	}
+	if filter.AlertLevel != nil {
+		db = db.Where("alert_level = ?", *filter.AlertLevel)
+	}
+	if filter.Component != nil {
+		db = db.Where("component = ?", *filter.Component)
+	}
+	if filter.Content != nil {
+		db = db.Where("content LIKE ?", "%"+*filter.Content+"%")
+	}
+
+	// 时间范围处理
+	if filter.AlertTimeRangeStart != nil {
+		db = db.Where("alert_time >= ?", filter.AlertTimeRangeStart)
+	}
+	if filter.AlertTimeRangeEnd != nil {
+		db = db.Where("alert_time <= ?", filter.AlertTimeRangeEnd)
+	}
+
+	// 2. 获取总数 (如果不需要总数展示，可移除此段以提升性能)
+	if err := db.Count(&total).Error; err != nil {
+		return response.AlertListResult{}, err
+	}
+
+	// 3. 分页与排序 (增加最大页数限制防止恶意大查询)
+	page := filter.Page
+	if page == 0 {
+		page = 1
+	}
+	// 防止 pageSize 过大导致内存溢出或慢查询
+	pageSize := filter.PageSize
+	if pageSize == 0 {
+		pageSize = 10
+	}
+	if pageSize > 100 { // 增加硬性上限
+		pageSize = 100
+	}
+	offset := (page - 1) * pageSize
+
+	// 4. 查询数据
+	if err := db.Limit(pageSize).Offset(offset).Order("created_at DESC").Find(&alerts).Error; err != nil {
+		return response.AlertListResult{}, err
+	}
+
+	// 5. 构造返回结果
+	result := response.AlertListResult{
+		List:     alerts,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}
+
+	// 只返回结果和错误，不再返回 int total
+	return result, nil
+}
+
+func (r *AlertRepoImp) FindByID(id int64) (*models.Alert, error) {
+	var alert models.Alert
+	db := r.db.Model(&models.Alert{}).Where("id = ?", id).First(&alert)
+	return &alert, db.Error
+}

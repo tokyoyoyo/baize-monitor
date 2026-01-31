@@ -128,5 +128,6 @@ func (c *Client) InitDatabase(models ...interface{}) error {
 func GetTableModelsList() []interface{} {
 	return []interface{}{
 		&models.BMCTrapParser{},
+		&models.Alert{},
 	}
 }

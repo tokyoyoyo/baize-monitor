@@ -73,7 +73,6 @@ func createTestParser(name string) *models.BMCTrapParser {
 		AlertContentOID:   "1.3.6.1.4.1.12345.1.2",
 		AlertTimeOID:      "1.3.6.1.4.1.12345.1.3",
 		AlertComponentOID: "1.3.6.1.4.1.12345.1.4",
-		TimeFormat:        "yyyy-MM-dd HH:mm:ss",
 		EnableAutoClose:   true,
 		Description:       "Test description",
 		IsActive:          true,
@@ -83,13 +82,13 @@ func createTestParser(name string) *models.BMCTrapParser {
 
 		// Initialize JSONB fields
 		LevelMappings: map[string]models.AlertLevel{
-			"1": models.Critical,
-			"2": models.Warning,
-			"3": models.Info,
+			"1": models.AlertLevelCritical,
+			"2": models.AlertLevelWarning,
+			"3": models.AlertLevelInfo,
 		},
-		StatusMappings: map[string]models.AlertStatus{
-			"0": models.Asserted,
-			"1": models.Deasserted,
+		StatusMappings: map[string]models.TrapStatus{
+			"0": models.TrapStatusAsserted,
+			"1": models.TrapStatusDeasserted,
 		},
 		EnableProductNameList: []string{"ProductA", "ProductB"},
 		EnableHostNameList:    []string{"host1", "host2"},
@@ -255,7 +254,7 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestUpdate() {
 	createdParser.ParserName = "updated_test_parser"
 	createdParser.Description = "Updated description"
 	createdParser.IsActive = false // ← Key: false is zero value
-	createdParser.LevelMappings["4"] = models.Notification
+	createdParser.LevelMappings["4"] = models.AlertLevelNotification
 	createdParser.EnableProductNameList = append(createdParser.EnableProductNameList, "ProductC")
 	createdParser.UpdatedAt = time.Now()
 
@@ -299,7 +298,7 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestFindByID() {
 	assert.Equal(suite.T(), testParser.VendorName, foundParser.VendorName)
 	assert.NotNil(suite.T(), foundParser.LevelMappings)
 	assert.Contains(suite.T(), foundParser.LevelMappings, "1")
-	assert.Equal(suite.T(), models.Critical, foundParser.LevelMappings["1"])
+	assert.Equal(suite.T(), models.AlertLevelCritical, foundParser.LevelMappings["1"])
 	assert.Contains(suite.T(), foundParser.EnableProductNameList, "ProductA")
 
 	// Test non-existent ID
@@ -358,7 +357,6 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestCreateWithAllFields() {
 		AlertStatusOID:                     "1.3.6.1.4.1.12345.1.6",
 		EnableContactInterComponentAlerts:  true,
 		ContactInterComponentIdentifierOID: "1.3.6.1.4.1.12345.1.7",
-		TimeFormat:                         "yyyy-MM-dd'T'HH:mm:ss",
 		Description:                        "Test parser with all optional fields",
 		IsActive:                           true,
 		IsDeleted:                          false,
@@ -366,12 +364,12 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestCreateWithAllFields() {
 		UpdatedAt:                          time.Now(),
 
 		LevelMappings: map[string]models.AlertLevel{
-			"critical": models.Critical,
-			"warning":  models.Warning,
+			"critical": models.AlertLevelCritical,
+			"warning":  models.AlertLevelWarning,
 		},
-		StatusMappings: map[string]models.AlertStatus{
-			"on":  models.Asserted,
-			"off": models.Deasserted,
+		StatusMappings: map[string]models.TrapStatus{
+			"on":  models.TrapStatusAsserted,
+			"off": models.TrapStatusDeasserted,
 		},
 		EnableProductNameList: []string{"ServerX", "ServerY"},
 		EnableHostNameList:    []string{"rack1-server1", "rack2-server1"},
@@ -502,10 +500,10 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestList() {
 		Page:     1,
 		PageSize: 10,
 	}
-	result, total, err := suite.repo.List(filter)
+	result, err := suite.repo.List(filter)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(3), total)
-	assert.Len(suite.T(), result, 3)
+	assert.Equal(suite.T(), int64(3), result.Total)
+	assert.Len(suite.T(), result.List, 3)
 
 	// Test ParserName fuzzy matching
 	parserName := "list_test"
@@ -514,11 +512,11 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestList() {
 		Page:       1,
 		PageSize:   10,
 	}
-	result, total, err = suite.repo.List(filter)
+	result, err = suite.repo.List(filter)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(3), total)
-	assert.Len(suite.T(), result, 3)
-	assert.Equal(suite.T(), "list_test_1", result[0].ParserName)
+	assert.Equal(suite.T(), int64(3), result.Total)
+	assert.Len(suite.T(), result.List, 3)
+	assert.Equal(suite.T(), "list_test_1", result.List[0].ParserName)
 
 	// Test VendorCode exact matching
 	vendorCode := "VENDOR_1"
@@ -527,10 +525,10 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestList() {
 		Page:       1,
 		PageSize:   10,
 	}
-	result, total, err = suite.repo.List(filter)
+	result, err = suite.repo.List(filter)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(1), total)
-	assert.Len(suite.T(), result, 1)
+	assert.Equal(suite.T(), int64(1), result.Total)
+	assert.Len(suite.T(), result.List, 1)
 
 	// Test VendorName fuzzy matching
 	vendorName := "Vendor"
@@ -539,10 +537,10 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestList() {
 		Page:       1,
 		PageSize:   10,
 	}
-	result, total, err = suite.repo.List(filter)
+	result, err = suite.repo.List(filter)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(3), total)
-	assert.Len(suite.T(), result, 3)
+	assert.Equal(suite.T(), int64(3), result.Total)
+	assert.Len(suite.T(), result.List, 3)
 
 	// Test IsActive exact matching
 	isActive := true
@@ -551,12 +549,12 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestList() {
 		Page:     1,
 		PageSize: 10,
 	}
-	result, total, err = suite.repo.List(filter)
+	result, err = suite.repo.List(filter)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(2), total)
-	assert.Len(suite.T(), result, 2)
-	assert.True(suite.T(), result[0].IsActive)
-	assert.True(suite.T(), result[1].IsActive)
+	assert.Equal(suite.T(), int64(2), result.Total)
+	assert.Len(suite.T(), result.List, 2)
+	assert.True(suite.T(), result.List[0].IsActive)
+	assert.True(suite.T(), result.List[1].IsActive)
 
 	// Test Description fuzzy matching
 	description := "test description"
@@ -565,10 +563,10 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestList() {
 		Page:        1,
 		PageSize:    10,
 	}
-	result, total, err = suite.repo.List(filter)
+	result, err = suite.repo.List(filter)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(2), total)
-	assert.Len(suite.T(), result, 2)
+	assert.Equal(suite.T(), int64(2), result.Total)
+	assert.Len(suite.T(), result.List, 2)
 
 	// Test combined filter conditions
 	isActive = true
@@ -579,22 +577,22 @@ func (suite *BMCTrapParserRepositoryTestSuite) TestList() {
 		Page:        1,
 		PageSize:    10,
 	}
-	result, total, err = suite.repo.List(filter)
+	result, err = suite.repo.List(filter)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(1), total)
-	assert.Len(suite.T(), result, 1)
-	assert.Equal(suite.T(), "VENDOR_1", result[0].VendorCode)
-	assert.True(suite.T(), result[0].IsActive)
+	assert.Equal(suite.T(), int64(1), result.Total)
+	assert.Len(suite.T(), result.List, 1)
+	assert.Equal(suite.T(), "VENDOR_1", result.List[0].VendorCode)
+	assert.True(suite.T(), result.List[0].IsActive)
 
 	// Test pagination
 	filter = &request.BMCTrapParserFilter{
 		Page:     2,
 		PageSize: 2,
 	}
-	result, total, err = suite.repo.List(filter)
+	result, err = suite.repo.List(filter)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(3), total)
-	assert.Len(suite.T(), result, 1)
+	assert.Equal(suite.T(), int64(3), result.Total)
+	assert.Len(suite.T(), result.List, 1)
 }
 
 func (suite *BMCTrapParserRepositoryTestSuite) TestIsParserNameExist() {

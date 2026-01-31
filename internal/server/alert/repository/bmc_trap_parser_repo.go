@@ -2,6 +2,7 @@ package repository
 
 import (
 	"baize-monitor/pkg/dto/request"
+	"baize-monitor/pkg/dto/response"
 	"baize-monitor/pkg/models"
 	"errors"
 	"fmt"
@@ -10,7 +11,7 @@ import (
 )
 
 type BMCTrapParserRepository interface {
-	List(filter *request.BMCTrapParserFilter) ([]*models.BMCTrapParser, int64, error)
+	List(filter *request.BMCTrapParserFilter) (response.BMCTrapParserListResult, error)
 	FindAll() ([]*models.BMCTrapParser, error)
 	FindByID(id int64) (*models.BMCTrapParser, error)
 	FindByVendorCode(vendorCode string) ([]*models.BMCTrapParser, error)
@@ -30,7 +31,7 @@ func NewBMCTrapParserRepository(db *gorm.DB) BMCTrapParserRepository {
 	return &bmcTrapParserRepoImpl{db: db}
 }
 
-func (r *bmcTrapParserRepoImpl) List(filter *request.BMCTrapParserFilter) ([]*models.BMCTrapParser, int64, error) {
+func (r *bmcTrapParserRepoImpl) List(filter *request.BMCTrapParserFilter) (response.BMCTrapParserListResult, error) {
 	db := r.db.Model(&models.BMCTrapParser{}).Where("is_deleted = ?", false)
 
 	// ParserName fuzzy matching
@@ -61,25 +62,48 @@ func (r *bmcTrapParserRepoImpl) List(filter *request.BMCTrapParserFilter) ([]*mo
 	// Get total record count
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, fmt.Errorf("failed to count records: %w", err)
+		return response.BMCTrapParserListResult{}, fmt.Errorf("failed to count records: %w", err)
 	}
 
-	// Pagination parameters
+	// Pagination parameters with default and limit
 	page := filter.Page
-
+	if page == 0 {
+		page = 1
+	}
 	pageSize := filter.PageSize
+	if pageSize == 0 {
+		pageSize = 10
+	}
+	// 防止 pageSize 过大
+	const maxPageSize = 100
+	if pageSize > maxPageSize {
+		pageSize = maxPageSize
+	}
+	offset := (page - 1) * pageSize
 
 	// Query data
 	var parsers []*models.BMCTrapParser
 	err := db.
 		Limit(pageSize).
-		Offset((page - 1) * pageSize).
+		Offset(offset).
 		Find(&parsers).Error
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to fetch records: %w", err)
+		return response.BMCTrapParserListResult{}, fmt.Errorf("failed to fetch records: %w", err)
 	}
 
-	return parsers, total, nil
+	respList := make([]*response.BMCTrapParserResponse, len(parsers))
+	for i, parser := range parsers {
+		respList[i] = new(response.BMCTrapParserResponse).FromParserDao(parser)
+	}
+
+	result := response.BMCTrapParserListResult{
+		List:     respList,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}
+
+	return result, nil
 }
 
 func (r *bmcTrapParserRepoImpl) FindAll() ([]*models.BMCTrapParser, error) {
@@ -133,11 +157,7 @@ func (r *bmcTrapParserRepoImpl) IsParserNameExist(parserName string, createMode 
 }
 
 func (r *bmcTrapParserRepoImpl) Create(parser *models.BMCTrapParser) error {
-	err := r.db.Create(parser).Error
-	if err != nil {
-		return err
-	}
-	return nil
+	return r.db.Create(parser).Error
 }
 
 func (r *bmcTrapParserRepoImpl) Update(parser *models.BMCTrapParser) error {
