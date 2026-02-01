@@ -2,20 +2,14 @@ package service
 
 import (
 	"baize-monitor/internal/server/alert/repository"
+	"baize-monitor/pkg/constants"
 	"baize-monitor/pkg/dto/request"
 	"baize-monitor/pkg/dto/response"
 	"baize-monitor/pkg/models"
 	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
-	"time"
-)
-
-var (
-	// 只验证OID格式但不提取
-	oidFormatRegex = regexp.MustCompile(`^\d+(?:\.\d+)+$`)
 )
 
 type BMCTrapParserService interface {
@@ -45,7 +39,7 @@ func (s *BMCTrapParserServiceImp) validateOID(oid, fieldName string) error {
 		return fmt.Errorf("%s长度不能超过500个字符", fieldName)
 	}
 
-	if !oidFormatRegex.MatchString(oid) {
+	if !constants.OidFormatRegex.MatchString(oid) {
 		return fmt.Errorf("%s格式不正确,必须是数字点分隔的格式", fieldName)
 	}
 
@@ -102,29 +96,6 @@ func (s *BMCTrapParserServiceImp) validateRequiredOIDs(req *request.BMCTrapParse
 				return err
 			}
 		}
-	}
-
-	return nil
-}
-
-func (s *BMCTrapParserServiceImp) validateTimeFormat(timeFormat string) error {
-	if strings.TrimSpace(timeFormat) == "" {
-		return errors.New("时间格式不能为空")
-	}
-	if len(timeFormat) > 200 {
-		return errors.New("时间格式长度不能超过200个字符")
-	}
-
-	now := time.Now().UTC().Truncate(time.Second)
-	formatted := now.Format(timeFormat)
-
-	parsed, err := time.Parse(timeFormat, formatted)
-	if err != nil {
-		return fmt.Errorf("时间格式无效，无法解析自身生成的字符串: %w", err)
-	}
-
-	if !parsed.Truncate(time.Second).Equal(now) {
-		return fmt.Errorf("时间格式 round-trip 失败：期望 %v,得到 %v", now, parsed.Truncate(time.Second))
 	}
 
 	return nil
@@ -197,9 +168,6 @@ func (s *BMCTrapParserServiceImp) Create(req *request.BMCTrapParserCreate) (int,
 	if err := s.validateRequiredOIDs(req); err != nil {
 		return http.StatusBadRequest, err
 	}
-	if err := s.validateTimeFormat(req.TimeFormat); err != nil {
-		return http.StatusBadRequest, err
-	}
 	if err := s.validateMappings(req); err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -253,9 +221,6 @@ func (s *BMCTrapParserServiceImp) Update(req *request.BMCTrapParserUpdate) (int,
 		return http.StatusBadRequest, fmt.Errorf("parserName已存在")
 	}
 	if err := s.validateRequiredOIDs(rc); err != nil {
-		return http.StatusBadRequest, err
-	}
-	if err := s.validateTimeFormat(rc.TimeFormat); err != nil {
 		return http.StatusBadRequest, err
 	}
 	if err := s.validateMappings(rc); err != nil {
@@ -326,18 +291,11 @@ func (s *BMCTrapParserServiceImp) Deactivate(id int64) (int, error) {
 
 func (s *BMCTrapParserServiceImp) List(filter *request.BMCTrapParserFilter) (response.BMCTrapParserListResult, int, error) {
 	var resp response.BMCTrapParserListResult
-	parsers, total, err := s.repo.List(filter)
+	resp, err := s.repo.List(filter)
 	if err != nil {
 		return response.BMCTrapParserListResult{}, http.StatusInternalServerError, fmt.Errorf("获取列表失败: %v", err)
 	}
 
-	resp.Total = total
-	resp.Page = filter.Page
-	resp.PageSize = filter.PageSize
-	resp.List = make([]*response.BMCTrapParserResponse, len(parsers))
-	for i, parser := range parsers {
-		resp.List[i] = parser.ToResponse()
-	}
 	return resp, http.StatusOK, nil
 
 }
@@ -347,10 +305,10 @@ func (s *BMCTrapParserServiceImp) List(filter *request.BMCTrapParserFilter) (res
 // isValidAlertLevel 验证告警级别是否有效
 func isValidAlertLevel(level string) bool {
 	switch models.AlertLevel(level) {
-	case models.Critical,
-		models.Info,
-		models.Warning,
-		models.Notification:
+	case models.AlertLevelCritical,
+		models.AlertLevelWarning,
+		models.AlertLevelInfo,
+		models.AlertLevelNotification:
 		return true
 	default:
 		return false
@@ -359,9 +317,9 @@ func isValidAlertLevel(level string) bool {
 
 // isValidAlertStatus 验证告警状态是否有效
 func isValidAlertStatus(status string) bool {
-	switch models.AlertStatus(status) {
-	case models.Asserted,
-		models.Deasserted:
+	switch models.TrapStatus(status) {
+	case models.TrapStatusAsserted,
+		models.TrapStatusDeasserted:
 		return true
 	default:
 		return false

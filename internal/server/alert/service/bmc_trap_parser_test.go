@@ -79,45 +79,6 @@ func TestBMCTrapParserServiceImp_validateOID(t *testing.T) {
 	}
 }
 
-func TestBMCTrapParserServiceImp_validateTimeFormat(t *testing.T) {
-	repo := getTestRepo()
-	service := NewBMCTrapParserServiceImp(repo)
-
-	tests := []struct {
-		name       string
-		timeFormat string
-		wantErr    bool
-	}{
-		{
-			name:       "valid time format",
-			timeFormat: "2006-01-02 15:04:05",
-			wantErr:    false,
-		},
-		{
-			name:       "empty time format",
-			timeFormat: "",
-			wantErr:    true,
-		},
-		{
-			name:       "invalid time format",
-			timeFormat: "invalid-format",
-			wantErr:    true,
-		},
-		{
-			name:       "time format too long",
-			timeFormat: "YYYY-MM-DD HH:MM:SS YYYY-MM-DD HH:MM:SS YYYY-MM-DD HH:MM:SS YYYY-MM-DD HH:MM:SS",
-			wantErr:    true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := service.validateTimeFormat(tt.timeFormat)
-			assert.Equal(t, tt.wantErr, err != nil)
-		})
-	}
-}
-
 func TestBMCTrapParserServiceImp_validateMappings(t *testing.T) {
 	repo := getTestRepo()
 	service := NewBMCTrapParserServiceImp(repo)
@@ -194,7 +155,7 @@ func TestBMCTrapParserServiceImp_validateMappings(t *testing.T) {
 			EnableAutoClose:                    true,
 			LevelMappings:                      map[string]string{"1": "critical"},
 			ComponentMappings:                  map[string][]string{"CPU": {"cpu1"}},
-			StatusMappings:                     map[string]string{"1": "asserted", "0": "deasserted"},
+			StatusMappings:                     map[string]string{"1": string(models.TrapStatusAsserted), "0": string(models.TrapStatusDeasserted)},
 			ContactInterComponentIdentifierOID: "1.3.6.1.4.1.2.7",
 		}
 
