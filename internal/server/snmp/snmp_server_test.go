@@ -60,7 +60,7 @@ func TestNewSNMPServer(t *testing.T) {
 				MidChannelSize: 100,
 			},
 			AlertServerConfig: &config.AlertServerConfig{
-				Addr: ":8080",
+				Port: 8080,
 			},
 		}
 
@@ -87,7 +87,7 @@ func TestSNMPServer_Start(t *testing.T) {
 			MidChannelSize: 100,
 		},
 		AlertServerConfig: &config.AlertServerConfig{
-			Addr: ":8080",
+			Port: 8080,
 		},
 	}
 
@@ -127,7 +127,7 @@ func TestSNMPServer_Stop(t *testing.T) {
 			MidChannelSize: 100,
 		},
 		AlertServerConfig: &config.AlertServerConfig{
-			Addr: ":8081",
+			Port: 8081,
 		},
 	}
 

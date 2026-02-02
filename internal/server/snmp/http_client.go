@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -68,14 +69,14 @@ func (c *SimpleHTTPTrapSenderIpmi) send(trap *models.TrapMessage) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read response body failed: %w", err)
 	}
 
-	snmp_logger.Debug("Trap sent to alert API",
-		"source", trap.SourceIP,
-		"status", resp.StatusCode)
-
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("unexpected status code: %d, content: %s", resp.StatusCode, string(body))
+	}
 	return nil
 }
 

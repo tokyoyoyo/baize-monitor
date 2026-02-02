@@ -161,6 +161,7 @@ func (h *TrapHandler) convertToTrapMessage(
 	rawPacket *models.RawPacket,
 ) *models.TrapMessage {
 	trap := &models.TrapMessage{
+		SourceType:  models.TrapSourceTypeBMC,
 		ReceivedAt:  time.Now(),
 		SourceIP:    rawPacket.RemoteAddr.IP,
 		SourcePort:  rawPacket.RemoteAddr.Port,

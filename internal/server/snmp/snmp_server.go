@@ -28,7 +28,17 @@ func NewSNMPServer(config *config.ServerConfig, locker storage.DistributedLocker
 	alertConfig := config.AlertServerConfig
 	snmpConfig := config.SNMPServerConfig
 
-	alertAddr := alertConfig.Addr
+	if alertConfig.Port <= 0 || alertConfig.Port > 65535 {
+		return nil, fmt.Errorf("invalid alert server port: %d (must be 1-65535)", alertConfig.Port)
+	}
+
+	alertHost := "127.0.0.1"
+	alertURL := fmt.Sprintf("http://%s:%d%s",
+		alertHost,
+		alertConfig.Port,
+		constants.AlertUploadFullPathV1,
+	)
+	httpClient := NewSimpleHTTPTrapSenderIpmi(alertURL)
 
 	if snmpConfig.MidChannelSize <= 0 {
 		snmpConfig.MidChannelSize = 10000
@@ -36,10 +46,6 @@ func NewSNMPServer(config *config.ServerConfig, locker storage.DistributedLocker
 	midChannel := make(chan *models.RawPacket, snmpConfig.MidChannelSize)
 
 	udpReceiver := NewUDPReceiver(*snmpConfig.ReceiverConf, midChannel)
-
-	alertURL := fmt.Sprintf("http://%s%s", alertAddr, constants.AlertServerUploadURL)
-
-	httpClient := NewSimpleHTTPTrapSenderIpmi(alertURL)
 
 	trapTrapHandler := NewTrapHandler(
 		locker,
