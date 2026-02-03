@@ -203,7 +203,7 @@ func (p *bmcTrapParser) processAutoClose(alert *models.Alert, tm *models.TrapMes
 		alert.EnableAutoClose = false
 		return
 	}
-
+	alert.EnableAutoClose = true
 	alert.TrapIndex = fmt.Sprintf("%v", rawIndex)
 }
 
