@@ -81,6 +81,12 @@ func (suite *AlertRepositoryTestSuite) TestCreateAlert_Success() {
 		AlertTime:   time.Now(),
 		Component:   "CPU",
 		Content:     "CPU temperature critical",
+		VariableMap: map[string]string{
+			".1.3.6.1.4.1.1234.1.1": "critical",                    // AlertLevelOID
+			".1.3.6.1.4.1.1234.1.2": "System temperature critical", // AlertContentOID
+			".1.3.6.1.4.1.1234.1.3": "2023-08-01T12:00:00Z",        // AlertTimeOID
+			".1.3.6.1.4.1.1234.1.4": "processor Unit",              // AlertComponentOID
+		},
 	}
 
 	// Act
@@ -165,7 +171,7 @@ func (suite *AlertRepositoryTestSuite) TestList_FilterByStatus() {
 	})
 
 	status := string(models.AlertStatusActive)
-	filter := &request.AlterFilter{
+	filter := &request.AlertFilter{
 		Status:   &status,
 		Page:     1,
 		PageSize: 10,
@@ -194,7 +200,7 @@ func (suite *AlertRepositoryTestSuite) TestList_FilterByTimeRange() {
 
 	start := baseTime.Add(-1 * time.Hour)
 	end := baseTime.Add(1 * time.Hour)
-	filter := &request.AlterFilter{
+	filter := &request.AlertFilter{
 		AlertTimeRangeStart: &start,
 		AlertTimeRangeEnd:   &end,
 		Page:                1,
@@ -226,7 +232,7 @@ func (suite *AlertRepositoryTestSuite) TestList_PaginationAndSorting() {
 	suite.createTestAlerts(alerts)
 
 	// Page 1
-	filter1 := &request.AlterFilter{Page: 1, PageSize: 5}
+	filter1 := &request.AlertFilter{Page: 1, PageSize: 5}
 	result1, _ := suite.repo.List(filter1)
 	assert.Len(suite.T(), result1.List, 5)
 	assert.Equal(suite.T(), int64(15), result1.Total)
@@ -236,18 +242,18 @@ func (suite *AlertRepositoryTestSuite) TestList_PaginationAndSorting() {
 	}
 
 	// Page 2
-	filter2 := &request.AlterFilter{Page: 2, PageSize: 5}
+	filter2 := &request.AlertFilter{Page: 2, PageSize: 5}
 	result2, _ := suite.repo.List(filter2)
 	assert.Len(suite.T(), result2.List, 5)
 	assert.NotEqual(suite.T(), result1.List[0].ID, result2.List[0].ID)
 
 	// Page 3 (last page)
-	filter3 := &request.AlterFilter{Page: 3, PageSize: 5}
+	filter3 := &request.AlertFilter{Page: 3, PageSize: 5}
 	result3, _ := suite.repo.List(filter3)
 	assert.Len(suite.T(), result3.List, 5)
 
 	// Page 4 (beyond total)
-	filter4 := &request.AlterFilter{Page: 4, PageSize: 5}
+	filter4 := &request.AlertFilter{Page: 4, PageSize: 5}
 	result4, _ := suite.repo.List(filter4)
 	assert.Len(suite.T(), result4.List, 0)
 }
@@ -266,7 +272,7 @@ func (suite *AlertRepositoryTestSuite) TestList_MaxPageSizeProtection() {
 	suite.createTestAlerts(alerts)
 
 	// Act: Request 200 items (exceeds max)
-	filter := &request.AlterFilter{
+	filter := &request.AlertFilter{
 		Page:     1,
 		PageSize: 200, // Should be capped at 100
 	}
@@ -288,7 +294,7 @@ func (suite *AlertRepositoryTestSuite) TestList_FuzzySearch() {
 	})
 
 	contentQuery := "Memory"
-	filter := &request.AlterFilter{
+	filter := &request.AlertFilter{
 		Content:  &contentQuery,
 		Page:     1,
 		PageSize: 10,
@@ -305,7 +311,7 @@ func (suite *AlertRepositoryTestSuite) TestList_FuzzySearch() {
 
 func (suite *AlertRepositoryTestSuite) TestList_EmptyResult() {
 	// Arrange: No data in DB
-	filter := &request.AlterFilter{
+	filter := &request.AlertFilter{
 		VendorCode: strPtr("NONEXISTENT"),
 		Page:       1,
 		PageSize:   10,

@@ -11,7 +11,7 @@ import (
 type AlertRepo interface {
 	Create(alert *models.Alert) error
 	Update(tm *models.Alert) error
-	List(filter *request.AlterFilter) (response.AlertListResult, error)
+	List(filter *request.AlertFilter) (response.AlertListResult, error)
 	FindByID(id int64) (*models.Alert, error)
 }
 
@@ -33,7 +33,7 @@ func (r *AlertRepoImp) Update(alert *models.Alert) error {
 	return db.Updates(alert).Error
 }
 
-func (r *AlertRepoImp) List(filter *request.AlterFilter) (response.AlertListResult, error) {
+func (r *AlertRepoImp) List(filter *request.AlertFilter) (response.AlertListResult, error) {
 	var alerts []*models.Alert
 	var total int64
 
