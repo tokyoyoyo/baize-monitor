@@ -96,16 +96,14 @@ func TestSNMPServer_Start(t *testing.T) {
 	require.NotNil(t, server)
 
 	t.Run("start server", func(t *testing.T) {
-		ctx := context.Background()
-		err := server.Start(ctx)
+		err := server.Start()
 		assert.NoError(t, err)
 		assert.True(t, server.running)
 		assert.NotNil(t, server.midChannel)
 	})
 
 	t.Run("start already started server", func(t *testing.T) {
-		ctx := context.Background()
-		err := server.Start(ctx)
+		err := server.Start()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "already started")
 	})
@@ -135,8 +133,7 @@ func TestSNMPServer_Stop(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, server)
 
-	ctx := context.Background()
-	err = server.Start(ctx)
+	err = server.Start()
 	require.NoError(t, err)
 	require.True(t, server.running)
 
@@ -183,8 +180,7 @@ func TestSNMPServer_Stop(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, newServer)
 
-		ctx := context.Background()
-		err = newServer.Start(ctx)
+		err = newServer.Start()
 		require.NoError(t, err)
 		require.True(t, newServer.running)
 

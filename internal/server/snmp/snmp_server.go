@@ -7,7 +7,6 @@ import (
 	"baize-monitor/pkg/models"
 	pkg_snmp "baize-monitor/pkg/snmp"
 	"baize-monitor/pkg/storage"
-	"context"
 	"fmt"
 	"time"
 )
@@ -64,7 +63,7 @@ func NewSNMPServer(config *config.ServerConfig, locker storage.DistributedLocker
 }
 
 // Start starts the SNMP server
-func (s *SNMPServer) Start(ctx context.Context) error {
+func (s *SNMPServer) Start() error {
 	if s.running {
 		return fmt.Errorf("SNMP server already started")
 	}
