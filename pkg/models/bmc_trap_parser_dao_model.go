@@ -2,7 +2,6 @@
 package models
 
 import (
-	"baize-monitor/pkg/dto/response"
 	"errors"
 	"time"
 )
@@ -32,14 +31,12 @@ type BMCTrapParser struct {
 	EnableContactInterComponentAlerts  bool   `json:"enable_contact_inter_component_alerts" gorm:"default:false;column:enable_contact_inter_component_alerts"`
 	ContactInterComponentIdentifierOID string `json:"contact_inter_component_identifier_oid" gorm:"size:500;column:contact_inter_component_identifier_oid"`
 
-	TimeFormat string `json:"time_format" gorm:"size:200;not null;column:time_format"`
-
 	// 映射配置 - 使用JSONB
-	LevelMappings         map[string]AlertLevel  `json:"level_mappings" gorm:"type:jsonb;not null;default:'{}';serializer:json;column:level_mappings"`
-	StatusMappings        map[string]AlertStatus `json:"status_mappings" gorm:"type:jsonb;not null;default:'{}';serializer:json;column:status_mappings"`
-	EnableProductNameList []string               `json:"enable_product_name_list" gorm:"type:jsonb;not null;default:'[]';serializer:json;column:enable_product_name_list"`
-	EnableHostNameList    []string               `json:"enable_host_name_list" gorm:"type:jsonb;not null;default:'[]';serializer:json;column:enable_host_name_list"`
-	ComponentMappings     map[string][]string    `json:"component_mappings" gorm:"type:jsonb;not null;default:'{}';serializer:json;column:component_mappings"`
+	LevelMappings         map[string]AlertLevel `json:"level_mappings" gorm:"type:jsonb;not null;default:'{}';serializer:json;column:level_mappings"`
+	StatusMappings        map[string]TrapStatus `json:"status_mappings" gorm:"type:jsonb;not null;default:'{}';serializer:json;column:status_mappings"`
+	EnableProductNameList []string              `json:"enable_product_name_list" gorm:"type:jsonb;not null;default:'[]';serializer:json;column:enable_product_name_list"`
+	EnableHostNameList    []string              `json:"enable_host_name_list" gorm:"type:jsonb;not null;default:'[]';serializer:json;column:enable_host_name_list"`
+	ComponentMappings     map[string][]string   `json:"component_mappings" gorm:"type:jsonb;not null;default:'{}';serializer:json;column:component_mappings"`
 
 	Description string `json:"description" gorm:"type:text;column:description"`
 	IsActive    bool   `json:"is_active" gorm:"default:true;column:is_active"`
@@ -50,65 +47,22 @@ func (BMCTrapParser) TableName() string {
 	return "bmc_trap_parsers"
 }
 
-func (p *BMCTrapParser) ToResponse() *response.BMCTrapParserResponse {
-	var res response.BMCTrapParserResponse
-	res.ID = p.ID
-	res.CreatedAt = p.CreatedAt
-	res.UpdatedAt = p.UpdatedAt
-
-	res.ParserName = p.ParserName
-	res.VendorName = p.VendorName
-	res.VendorCode = p.VendorCode
-
-	res.AlertLevelOID = p.AlertLevelOID
-	res.AlertContentOID = p.AlertContentOID
-	res.AlertTimeOID = p.AlertTimeOID
-	res.AlertComponentOID = p.AlertComponentOID
-
-	res.EnableAutoClose = p.EnableAutoClose
-	res.AlertIndexOID = p.AlertIndexOID
-	res.AlertStatusOID = p.AlertStatusOID
-
-	res.EnableContactInterComponentAlerts = p.EnableContactInterComponentAlerts
-	res.ContactInterComponentIdentifierOID = p.ContactInterComponentIdentifierOID
-
-	res.TimeFormat = p.TimeFormat
-
-	res.LevelMappings = make(map[string]string)
-	for k, v := range p.LevelMappings {
-		res.LevelMappings[k] = string(v)
-	}
-	res.StatusMappings = make(map[string]string)
-	for k, v := range p.StatusMappings {
-		res.StatusMappings[k] = string(v)
-	}
-
-	res.EnableProductNameList = p.EnableProductNameList
-	res.EnableHostNameList = p.EnableHostNameList
-	res.ComponentMappings = p.ComponentMappings
-
-	res.Description = p.Description
-	res.IsActive = p.IsActive
-
-	return &res
-}
-
 // AlertLevel 标准告警级别枚举类型
 type AlertLevel string
 
 const (
-	Critical     AlertLevel = "critical"
-	Warning      AlertLevel = "warning"
-	Info         AlertLevel = "info"
-	Notification AlertLevel = "notification"
+	AlertLevelCritical     AlertLevel = "critical"
+	AlertLevelWarning      AlertLevel = "warning"
+	AlertLevelInfo         AlertLevel = "info"
+	AlertLevelNotification AlertLevel = "notification"
 )
 
-// AlertStatus 标准告警状态枚举类型
-type AlertStatus string
+// TrapStatus 标准告警状态枚举类型
+type TrapStatus string
 
 const (
-	Asserted   AlertStatus = "asserted"
-	Deasserted AlertStatus = "deasserted"
+	TrapStatusAsserted   TrapStatus = "Asserted"
+	TrapStatusDeasserted TrapStatus = "Deasserted"
 )
 
 type AlertComponent string

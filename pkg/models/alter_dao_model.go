@@ -26,7 +26,7 @@ type Alert struct {
 	// 原始信息
 	RawData     []byte            `json:"raw_data" gorm:"type:text"`
 	TrapRawTime string            `json:"trap_raw_time" gorm:"size:100"`
-	VariableMap map[string]string `json:"variable_map" gorm:"type:json"` // OID -> value mapping for easy access
+	VariableMap map[string]string `json:"variable_map" gorm:"type:jsonb;not null;default:'{}';serializer:json;column:variable_map"` // OID -> value mapping for easy access
 
 	EnableAutoClose bool       `json:"enable_auto_close"`                 // 是否启用自动关闭
 	TrapIndex       string     `json:"trap_index" gorm:"size:200;index"`  // 告警索引OID
