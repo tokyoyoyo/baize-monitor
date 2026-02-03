@@ -1,7 +1,7 @@
-// pkg/dto/response/bmc_trap_parser.go
 package response
 
 import (
+	"baize-monitor/pkg/models"
 	"time"
 )
 
@@ -28,8 +28,6 @@ type BMCTrapParserResponse struct {
 	EnableContactInterComponentAlerts  bool   `json:"enable_contact_inter_component_alerts"`
 	ContactInterComponentIdentifierOID string `json:"contact_inter_component_identifier_oid,omitempty"`
 
-	TimeFormat string `json:"time_format"`
-
 	// 映射配置
 	LevelMappings         map[string]string   `json:"level_mappings"`
 	StatusMappings        map[string]string   `json:"status_mappings"`
@@ -39,6 +37,46 @@ type BMCTrapParserResponse struct {
 
 	Description string `json:"description"`
 	IsActive    bool   `json:"is_active"`
+}
+
+func (res *BMCTrapParserResponse) FromParserDao(p *models.BMCTrapParser) *BMCTrapParserResponse {
+	res.ID = p.ID
+	res.CreatedAt = p.CreatedAt
+	res.UpdatedAt = p.UpdatedAt
+
+	res.ParserName = p.ParserName
+	res.VendorName = p.VendorName
+	res.VendorCode = p.VendorCode
+
+	res.AlertLevelOID = p.AlertLevelOID
+	res.AlertContentOID = p.AlertContentOID
+	res.AlertTimeOID = p.AlertTimeOID
+	res.AlertComponentOID = p.AlertComponentOID
+
+	res.EnableAutoClose = p.EnableAutoClose
+	res.AlertIndexOID = p.AlertIndexOID
+	res.AlertStatusOID = p.AlertStatusOID
+
+	res.EnableContactInterComponentAlerts = p.EnableContactInterComponentAlerts
+	res.ContactInterComponentIdentifierOID = p.ContactInterComponentIdentifierOID
+
+	res.LevelMappings = make(map[string]string)
+	for k, v := range p.LevelMappings {
+		res.LevelMappings[k] = string(v)
+	}
+	res.StatusMappings = make(map[string]string)
+	for k, v := range p.StatusMappings {
+		res.StatusMappings[k] = string(v)
+	}
+
+	res.EnableProductNameList = p.EnableProductNameList
+	res.EnableHostNameList = p.EnableHostNameList
+	res.ComponentMappings = p.ComponentMappings
+
+	res.Description = p.Description
+	res.IsActive = p.IsActive
+
+	return res
 }
 
 // BMCTrapParserCreateResponse 创建解析器响应

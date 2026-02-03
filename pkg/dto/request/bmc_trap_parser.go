@@ -2,15 +2,12 @@
 package request
 
 import (
+	"baize-monitor/pkg/constants"
 	"baize-monitor/pkg/models"
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 )
-
-// 匹配标准企业OID格式：1.3.6.1.4.1.xxx.xxx...
-var enterpriseOIDRegex = regexp.MustCompile(`^1\.3\.6\.1\.4\.1\.(\d+)(?:\.|$)`)
 
 // BMCTrapParserCreate 创建解析器请求
 type BMCTrapParserCreate struct {
@@ -46,7 +43,7 @@ type BMCTrapParserCreate struct {
 
 func extractEnterpriseNumberWithRegex(oid string) (string, error) {
 	// 查找匹配
-	matches := enterpriseOIDRegex.FindStringSubmatch(oid)
+	matches := constants.EnterpriseOIDRegex.FindStringSubmatch(oid)
 	if len(matches) < 2 {
 		return "", errors.New("不是标准的企业OID格式")
 	}
@@ -103,8 +100,6 @@ func (req *BMCTrapParserCreate) ToParserRecord() (*models.BMCTrapParser, error) 
 		AlertTimeOID:      strings.TrimSpace(req.AlertTimeOID),
 		AlertComponentOID: strings.TrimSpace(req.AlertComponentOID),
 
-		TimeFormat: strings.TrimSpace(req.TimeFormat),
-
 		EnableAutoClose: req.EnableAutoClose,
 		AlertIndexOID:   strings.TrimSpace(req.AlertIndexOID),
 		AlertStatusOID:  strings.TrimSpace(req.AlertStatusOID),
@@ -121,9 +116,9 @@ func (req *BMCTrapParserCreate) ToParserRecord() (*models.BMCTrapParser, error) 
 		parser.LevelMappings[strings.TrimSpace(k)] = models.AlertLevel(strings.TrimSpace(v))
 	}
 
-	parser.StatusMappings = make(map[string]models.AlertStatus)
+	parser.StatusMappings = make(map[string]models.TrapStatus)
 	for k, v := range req.StatusMappings {
-		parser.StatusMappings[strings.TrimSpace(k)] = models.AlertStatus(strings.TrimSpace(v))
+		parser.StatusMappings[strings.TrimSpace(k)] = models.TrapStatus(strings.TrimSpace(v))
 	}
 
 	if req.ComponentMappings != nil {
@@ -156,7 +151,6 @@ func (rc *BMCTrapParserCreate) FromBMCTrapParser(parser *models.BMCTrapParser) {
 	rc.AlertContentOID = parser.AlertContentOID
 	rc.AlertTimeOID = parser.AlertTimeOID
 	rc.AlertComponentOID = parser.AlertComponentOID
-	rc.TimeFormat = parser.TimeFormat
 	rc.EnableAutoClose = parser.EnableAutoClose
 	rc.AlertIndexOID = parser.AlertIndexOID
 	rc.AlertStatusOID = parser.AlertStatusOID
@@ -259,10 +253,6 @@ func (ru *BMCTrapParserUpdate) UpdateParserRecord(parser *models.BMCTrapParser) 
 		parser.ContactInterComponentIdentifierOID = *ru.ContactInterComponentIdentifierOID
 	}
 
-	if ru.TimeFormat != nil {
-		parser.TimeFormat = *ru.TimeFormat
-	}
-
 	if ru.LevelMappings != nil {
 		parser.LevelMappings = make(map[string]models.AlertLevel)
 		for k, v := range *ru.LevelMappings {
@@ -270,9 +260,9 @@ func (ru *BMCTrapParserUpdate) UpdateParserRecord(parser *models.BMCTrapParser) 
 		}
 	}
 	if ru.StatusMappings != nil {
-		parser.StatusMappings = make(map[string]models.AlertStatus)
+		parser.StatusMappings = make(map[string]models.TrapStatus)
 		for k, v := range *ru.StatusMappings {
-			parser.StatusMappings[strings.TrimSpace(k)] = models.AlertStatus(strings.TrimSpace(v))
+			parser.StatusMappings[strings.TrimSpace(k)] = models.TrapStatus(strings.TrimSpace(v))
 		}
 	}
 
@@ -292,13 +282,16 @@ func (ru *BMCTrapParserUpdate) UpdateParserRecord(parser *models.BMCTrapParser) 
 }
 
 type BMCTrapParserFilter struct {
-	Page        int     `form:"page" binding:"omitempty,min=1" default:"1"`
-	PageSize    int     `form:"page_size" binding:"omitempty,min=1" default:"10"`
-	ParserName  *string `json:"parser_name,omitempty"` // 模糊匹配
-	VendorCode  *string `json:"vendor_code,omitempty"` // 精确匹配
-	VendorName  *string `json:"vendor_name,omitempty"` // 模糊匹配
-	IsActive    *bool   `json:"is_active,omitempty"`   // 精确匹配
-	Description *string `json:"description,omitempty"` // 模糊匹配
+	// 统一使用 json tag，因为数据从 Body 中解析，如果前端传了就用传的值，没传就用 default
+	Page     int `json:"page" binding:"omitempty,min=1" default:"1"`
+	PageSize int `json:"page_size" binding:"omitempty,min=1" default:"10"`
+
+	// 查询条件：使用指针。如果前端不传，指针为 nil，后端可跳过该条件
+	ParserName  *string `json:"parser_name,omitempty"` // 模糊匹配 (nil或空字符串时忽略)
+	VendorCode  *string `json:"vendor_code,omitempty"` // 精确匹配 (nil或空字符串时忽略)
+	VendorName  *string `json:"vendor_name,omitempty"` // 模糊匹配 (nil或空字符串时忽略)
+	IsActive    *bool   `json:"is_active,omitempty"`   // 精确匹配 (nil时忽略)
+	Description *string `json:"description,omitempty"` // 模糊匹配 (nil或空字符串时忽略)
 }
 
 func trimStringSlice(slice []string) []string {
