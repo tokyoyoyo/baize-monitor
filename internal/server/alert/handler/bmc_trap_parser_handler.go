@@ -33,7 +33,7 @@ func (h *BMCTrapParserHandlerImpl) Create(c *gin.Context) {
 	var req request.BMCTrapParserCreate
 
 	// Bind JSON request body to struct
-	err := c.ShouldBindJSON(&req)
+	err := c.BindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid request parameters",
@@ -61,7 +61,7 @@ func (h *BMCTrapParserHandlerImpl) Update(c *gin.Context) {
 	var req request.BMCTrapParserUpdate
 
 	// Bind JSON request body to struct
-	err := c.ShouldBindJSON(&req)
+	err := c.BindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid request parameters",
@@ -87,7 +87,7 @@ func (h *BMCTrapParserHandlerImpl) Delete(c *gin.Context) {
 	var req request.BMCTrapParserUpdate
 
 	// Bind JSON request body to struct
-	err := c.ShouldBindJSON(&req)
+	err := c.BindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid request parameters",
@@ -111,7 +111,7 @@ func (h *BMCTrapParserHandlerImpl) Delete(c *gin.Context) {
 
 func (h *BMCTrapParserHandlerImpl) Activate(c *gin.Context) {
 	var req request.BMCTrapParserUpdate
-	err := c.ShouldBindJSON(&req)
+	err := c.BindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid request parameters",
@@ -135,7 +135,7 @@ func (h *BMCTrapParserHandlerImpl) Activate(c *gin.Context) {
 
 func (h *BMCTrapParserHandlerImpl) Deactivate(c *gin.Context) {
 	var req request.BMCTrapParserUpdate
-	err := c.ShouldBindJSON(&req)
+	err := c.BindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid request parameters",
@@ -160,7 +160,7 @@ func (h *BMCTrapParserHandlerImpl) Deactivate(c *gin.Context) {
 func (h *BMCTrapParserHandlerImpl) List(c *gin.Context) {
 	var req request.BMCTrapParserFilter
 
-	err := c.ShouldBindQuery(&req)
+	err := c.BindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid request parameters",
