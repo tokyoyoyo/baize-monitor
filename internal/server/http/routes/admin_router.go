@@ -15,9 +15,7 @@ type AdminRouterImpl struct {
 	router *gin.Engine
 }
 
-func NewAdminRouter(
-	bmcTrapParserH alert_handler.BMCTrapParserHandler,
-) AdminRouter {
+func NewAdminRouter(bmcTrapParserH alert_handler.BMCTrapParserHandler) AdminRouter {
 	router := gin.New()
 
 	ar := &AdminRouterImpl{router: router}

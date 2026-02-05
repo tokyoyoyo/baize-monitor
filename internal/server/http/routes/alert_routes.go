@@ -16,9 +16,7 @@ type AlertRouterImpl struct {
 	router *gin.Engine
 }
 
-func NewAlertRouter(
-	bmcTraprH handler.BMCTrapHandler,
-) AlertRouter {
+func NewAlertRouter(bmcTraprH handler.BMCTrapHandler) AlertRouter {
 	router := gin.New()
 
 	ar := &AlertRouterImpl{router: router}

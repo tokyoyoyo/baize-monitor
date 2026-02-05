@@ -13,9 +13,9 @@ type AlertServer struct {
 	s http.Server
 }
 
-func NewAlertServer(cfg *config.ServerConfig, r routes.AlertRouter) *AlertServer {
+func NewAlertServer(cfg *config.ServerConfig, r routes.AlertRouter) (*AlertServer, error) {
 	if cfg.AlertServerConfig.Port < 0 || cfg.AlertServerConfig.Port > 65535 {
-		panic("invalid port")
+		return nil, fmt.Errorf("invalid alert server port: %d", cfg.AlertServerConfig.Port)
 	}
 
 	addr := fmt.Sprintf(":%d", cfg.AlertServerConfig.Port)
@@ -29,7 +29,7 @@ func NewAlertServer(cfg *config.ServerConfig, r routes.AlertRouter) *AlertServer
 			WriteTimeout: 15 * time.Second,
 			IdleTimeout:  60 * time.Second,
 		},
-	}
+	}, nil
 }
 
 func (s *AlertServer) Start() error {
