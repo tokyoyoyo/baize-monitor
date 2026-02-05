@@ -67,14 +67,15 @@ func setupTest(t *testing.T) service.BMCTrapService {
 	}
 	assert.NoError(t, parserRepo.Create(parser))
 
-	pc := service.NewParserCache(parserRepo)
+	pc := service.NewBMCTrapParserCache(parserRepo)
 	service := service.NewBMCTrapServiceImp(pc, alertRepo)
 
 	return service
 }
 
 func TestNewBMCTrapHandler(t *testing.T) {
-	handler := NewBMCTrapHandler()
+	service := setupTest(t)
+	handler := NewBMCTrapHandler(service)
 	assert.NotNil(t, handler)
 }
 

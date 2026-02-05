@@ -20,8 +20,8 @@ type BMCTrapHandlerImpl struct {
 	s service.BMCTrapService
 }
 
-func NewBMCTrapHandler() BMCTrapHandler {
-	return &BMCTrapHandlerImpl{}
+func NewBMCTrapHandler(BMCTrapService service.BMCTrapService) BMCTrapHandler {
+	return &BMCTrapHandlerImpl{s: BMCTrapService}
 }
 
 func (h *BMCTrapHandlerImpl) ReceiveTrap(c *gin.Context) {
