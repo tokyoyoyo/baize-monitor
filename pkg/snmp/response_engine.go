@@ -378,14 +378,14 @@ func NewResponseEngineFactory(config *config.ResponseEngineFactoryConfig) *Respo
 		factory.engines[gosnmp.Version1] = NewV1_V2cResponseEngine(rc, rwc, enable, gosnmp.Version1)
 	}
 
-	if config.V2cConfig != nil && config.V2cConfig.Enabled {
+	if config.V2cConfig != nil {
 		rc := config.V2cConfig.ReadCommunity
 		rwc := config.V2cConfig.ReadWriteCommunity
 		enable := config.V2cConfig.Enabled
 		factory.engines[gosnmp.Version2c] = NewV1_V2cResponseEngine(rc, rwc, enable, gosnmp.Version2c)
 	}
 
-	if config.V3Config != nil && config.V3Config.Enabled {
+	if config.V3Config != nil {
 		factory.engines[gosnmp.Version3] = NewV3ResponseEngine(config.V3Config)
 	}
 
