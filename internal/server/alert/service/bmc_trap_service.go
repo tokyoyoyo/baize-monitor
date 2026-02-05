@@ -19,14 +19,11 @@ type BMCTrapService interface {
 }
 
 type BMCTrapServiceImp struct {
-	pc   *ParserCache
+	pc   *BMCTrapParserCache
 	repo repository.AlertRepo
 }
 
-func NewBMCTrapServiceImp(
-	pc *ParserCache,
-	repo repository.AlertRepo,
-) *BMCTrapServiceImp {
+func NewBMCTrapServiceImp(pc *BMCTrapParserCache, repo repository.AlertRepo) *BMCTrapServiceImp {
 	return &BMCTrapServiceImp{
 		pc:   pc,
 		repo: repo,

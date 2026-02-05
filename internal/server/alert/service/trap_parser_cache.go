@@ -226,8 +226,7 @@ func (p *bmcTrapParser) processTheIdentifierOfTheSameComponent(alert *models.Ale
 	alert.IdentifierOfTheSameComponent = fmt.Sprintf("%v", rawIdentifier)
 }
 
-// ParserCache 使用倒排索引的解析器缓存
-type ParserCache struct {
+type BMCTrapParserCache struct {
 	// 核心倒排索引
 	vendorIndex map[string][]*bmcTrapParser // vendor_code -> 解析器列表
 
@@ -238,10 +237,8 @@ type ParserCache struct {
 	bmcTrapParserRepo repository.BMCTrapParserRepository
 }
 
-func NewParserCache(
-	btpr repository.BMCTrapParserRepository,
-) *ParserCache {
-	cache := &ParserCache{
+func NewBMCTrapParserCache(btpr repository.BMCTrapParserRepository) *BMCTrapParserCache {
+	cache := &BMCTrapParserCache{
 		vendorIndex:       make(map[string][]*bmcTrapParser),
 		allParsers:        make(map[int64]*bmcTrapParser),
 		parserChecksums:   make(map[int64]string),
@@ -256,7 +253,7 @@ func NewParserCache(
 }
 
 // FindParser 使用倒排索引快速查找解析器
-func (c *ParserCache) FindParser(trap *models.TrapMessage) (*bmcTrapParser, error) {
+func (c *BMCTrapParserCache) FindParser(trap *models.TrapMessage) (*bmcTrapParser, error) {
 	trapVendorCode, err := trap.ParseVendorCode()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse vendor code: %w", err)
@@ -274,7 +271,7 @@ func (c *ParserCache) FindParser(trap *models.TrapMessage) (*bmcTrapParser, erro
 }
 
 // Reload 重建倒排索引
-func (c *ParserCache) initload() {
+func (c *BMCTrapParserCache) initload() {
 	parserRecords, err := c.bmcTrapParserRepo.FindAll()
 	if err != nil {
 		panic(fmt.Errorf("failed load bmc trap parser, err:%v", err))
@@ -301,13 +298,13 @@ func (c *ParserCache) initload() {
 }
 
 // calculateChecksum 计算解析器配置的校验和
-func (c *ParserCache) calculateChecksum(parser *bmcTrapParser) string {
+func (c *BMCTrapParserCache) calculateChecksum(parser *bmcTrapParser) string {
 	bytes, _ := json.Marshal(parser)
 	return fmt.Sprintf("%x", md5.Sum(bytes))
 }
 
 // GetParsersByVendor 获取指定厂商的所有解析器
-func (c *ParserCache) getParsersByVendor(vendorCode string) []*bmcTrapParser {
+func (c *BMCTrapParserCache) getParsersByVendor(vendorCode string) []*bmcTrapParser {
 	if parsers, exists := c.vendorIndex[vendorCode]; exists {
 		return parsers
 	}
@@ -315,7 +312,7 @@ func (c *ParserCache) getParsersByVendor(vendorCode string) []*bmcTrapParser {
 }
 
 // autoReload 自动重新加载
-func (c *ParserCache) autoReload() {
+func (c *BMCTrapParserCache) autoReload() {
 	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
 
@@ -348,7 +345,7 @@ func (c *ParserCache) autoReload() {
 	}
 }
 
-func (c *ParserCache) updateParser(parserID int64, parser *models.BMCTrapParser, newChecksum string) {
+func (c *BMCTrapParserCache) updateParser(parserID int64, parser *models.BMCTrapParser, newChecksum string) {
 	parserInstance := ConvertToParser(parser)
 
 	// 从旧的vendor索引中移除
@@ -368,7 +365,7 @@ func (c *ParserCache) updateParser(parserID int64, parser *models.BMCTrapParser,
 	c.allParsers[parserID] = parserInstance
 }
 
-func (c *ParserCache) removeFromVendorIndex(parser *bmcTrapParser) {
+func (c *BMCTrapParserCache) removeFromVendorIndex(parser *bmcTrapParser) {
 	parsers := c.vendorIndex[parser.VendorCode]
 	for i, p := range parsers {
 		if p.ID == parser.ID {

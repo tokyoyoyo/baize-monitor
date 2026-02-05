@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupTest(t *testing.T) (BMCTrapService, *ParserCache, repository.BMCTrapParserRepository) {
+func setupTest(t *testing.T) (BMCTrapService, *BMCTrapParserCache, repository.BMCTrapParserRepository) {
 	testConf, err := config.LoadTestMockServerConfig()
 	if err != nil {
 		panic("")
@@ -44,7 +44,7 @@ func setupTest(t *testing.T) (BMCTrapService, *ParserCache, repository.BMCTrapPa
 
 	parserRepo := repository.NewBMCTrapParserRepository(db.DB)
 	alertRepo := repository.NewAlertRepoImp(db.DB)
-	pc := NewParserCache(parserRepo)
+	pc := NewBMCTrapParserCache(parserRepo)
 	service := NewBMCTrapServiceImp(pc, alertRepo)
 
 	return service, pc, parserRepo

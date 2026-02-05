@@ -202,7 +202,7 @@ func TestParserCache_FindParser(t *testing.T) {
 	assert.NoError(t, err)
 
 	// 创建ParserCache实例
-	cache := NewParserCache(repo)
+	cache := NewBMCTrapParserCache(repo)
 
 	// 创建匹配的TrapMessage
 	trapData := &models.TrapMessage{
@@ -259,7 +259,7 @@ func TestParserCache_InitLoad(t *testing.T) {
 	assert.NoError(t, err)
 
 	// 创建ParserCache实例
-	cache := &ParserCache{
+	cache := &BMCTrapParserCache{
 		vendorIndex:       make(map[string][]*bmcTrapParser),
 		allParsers:        make(map[int64]*bmcTrapParser),
 		parserChecksums:   make(map[int64]string),
@@ -278,7 +278,7 @@ func TestParserCache_InitLoad(t *testing.T) {
 }
 
 func TestParserCache_CalculateChecksum(t *testing.T) {
-	cache := &ParserCache{}
+	cache := &BMCTrapParserCache{}
 
 	parser1 := &bmcTrapParser{
 		ID:            1,
