@@ -1,0 +1,61 @@
+server_config:
+    gin_debug: false
+    admin_server_config:
+        port: 8080
+    alert_server_config:
+        port: 8081
+    post_gres_config:
+        host: localhost
+        port: 5432
+        user: postgres
+        password: qwer1234
+        database: baize_test
+        ssl_mode: disable
+        max_conns: 10
+        idle_conns: 5
+    snmp_server_config:
+        receiver_conf:
+            port: 8888
+        trap_handler_conf:
+            worker_count: 5
+            lock_timeout: 30
+            processing_timeout: 60
+        mid_channel_size: 100
+    redis_config:
+        host: localhost
+        port: 6379
+        password: qwer1234
+        db: 0
+    log_config:
+        level: info
+        format: text
+        output: file
+        log_dir: /var/log/baize
+        max_size_mb: 100
+        max_backups: 10
+        max_age_days: 7
+        gorm:
+            enabled: true
+            level: warn
+            slow_threshold: 1s
+            ignore_record_not_found_error: true
+            parameterized_queries: false
+            colorful: false
+    response_manager_config:
+        engine_factory_config:
+            v1_config:
+                read_community: public
+                read_write_community: private
+                enabled: true
+            v2c_config:
+                read_community: public
+                read_write_community: private
+                enabled: true
+            v3_config:
+                enabled: false
+                user_name: admin
+                msg_flags: AuthPriv
+                auth_protocol: SHA
+                priv_protocol: AES
+                priv_passphrase: priv_passphrase
+                auth_passphrase: auth_passphrase

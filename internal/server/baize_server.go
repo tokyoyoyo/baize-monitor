@@ -15,13 +15,15 @@ type BaiZeServer struct {
 	snmpServer  *snmp.SNMPServer
 }
 
-func NewServer(cfg *config.ServerConfig,
+func NewBaiZeServer(cfg *config.ServerConfig,
 	adminS *AdminServer,
 	alertS *AlertServer,
 	snmpS *snmp.SNMPServer,
 ) *BaiZeServer {
 	// 设置Gin模式
-	if cfg.GinEnv == "production" {
+	if cfg.GinDebug {
+		gin.SetMode(gin.DebugMode)
+	} else {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
