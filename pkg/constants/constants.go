@@ -2,6 +2,8 @@ package constants
 
 import "regexp"
 
+const ServerConfigPath = "./config/server.yaml"
+
 const (
 	APIV1Prefix            = "/api/v1"
 	BMCAlertUploadEndpoint = "upload_bmc_trap"
