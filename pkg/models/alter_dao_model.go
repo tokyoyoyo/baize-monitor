@@ -36,6 +36,10 @@ type Alert struct {
 	IdentifierOfTheSameComponent      string `json:"identifier_of_the_same_component" gorm:"size:200;index"`
 }
 
+func (Alert) TableName() string {
+	return "alerts"
+}
+
 // 告警记录状态枚举类型
 type AlertStatus string
 
