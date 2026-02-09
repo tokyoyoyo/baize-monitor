@@ -129,5 +129,6 @@ func GetTableModelsList() []interface{} {
 	return []interface{}{
 		&models.BMCTrapParser{},
 		&models.Alert{},
+		&models.User{},
 	}
 }
