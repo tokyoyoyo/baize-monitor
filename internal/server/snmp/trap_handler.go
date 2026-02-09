@@ -5,7 +5,6 @@ import (
 	"baize-monitor/pkg/models"
 	pkg_snmp "baize-monitor/pkg/snmp"
 	"baize-monitor/pkg/storage"
-	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -123,11 +122,8 @@ func (h *TrapHandler) processTrap(rawPacket *models.RawPacket) {
 	startTime := time.Now()
 	// Generate lock key for deduplication
 	lockKey := h.locker.GenerateTrapLockKey(rawPacket.Data)
-	// dont want use context here
-	lockCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
 
-	acquired, err := h.locker.AcquireLock(lockCtx, lockKey, h.LockTimeout)
+	acquired, err := h.locker.AcquireLock(lockKey, h.LockTimeout)
 	if err != nil {
 		snmp_logger.Error("Failed to acquire lock for trap", "remote_addr", rawPacket.RemoteAddr, "error", err)
 		return

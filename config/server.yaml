@@ -21,11 +21,6 @@ server_config:
             lock_timeout: 30
             processing_timeout: 60
         mid_channel_size: 100
-    redis_config:
-        host: localhost
-        port: 6379
-        password: qwer1234
-        db: 0
     log_config:
         level: info
         format: text

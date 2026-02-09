@@ -4,7 +4,7 @@ import (
 	"baize-monitor/internal/server/alert/repository"
 	"baize-monitor/pkg/config"
 	"baize-monitor/pkg/models"
-	storage "baize-monitor/pkg/storage/postgres"
+	"baize-monitor/pkg/storage"
 	"net"
 	"testing"
 

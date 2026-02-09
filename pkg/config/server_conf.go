@@ -45,14 +45,6 @@ type V3EngineConfig struct {
 	AuthPassphrase string `mapstructure:"auth_passphrase" yaml:"auth_passphrase"`
 }
 
-// RedisConfig Redis configuration
-type RedisConfig struct {
-	Host     string `mapstructure:"host" yaml:"host"`
-	Port     int    `mapstructure:"port" yaml:"port"`
-	Password string `mapstructure:"password" yaml:"password"`
-	DB       int    `mapstructure:"db" yaml:"db"`
-}
-
 type SNMPServerConfig struct {
 	ReceiverConf    *ReceiverConfig    `mapstructure:"receiver_conf" yaml:"receiver_conf"`
 	TrapHandlerConf *TrapHandlerConfig `mapstructure:"trap_handler_conf" yaml:"trap_handler_conf"`
@@ -139,7 +131,6 @@ type ServerConfig struct {
 	AlertServerConfig     *AlertServerConfig     `mapstructure:"alert_server_config" yaml:"alert_server_config"`
 	PostGresConfig        *PostGresConfig        `mapstructure:"post_gres_config" yaml:"post_gres_config"`
 	SNMPServerConfig      *SNMPServerConfig      `mapstructure:"snmp_server_config" yaml:"snmp_server_config"`
-	RedisConfig           *RedisConfig           `mapstructure:"redis_config" yaml:"redis_config"`
 	LogConfig             *LogConfig             `mapstructure:"log_config" yaml:"log_config"`
 	ResponseManagerConfig *ResponseManagerConfig `mapstructure:"response_manager_config" yaml:"response_manager_config"`
 }

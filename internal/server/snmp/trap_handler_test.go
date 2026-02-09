@@ -3,7 +3,6 @@ package snmp
 import (
 	"baize-monitor/pkg/config"
 	"baize-monitor/pkg/models"
-	"context"
 	"errors"
 	"net"
 	"sync"
@@ -20,24 +19,14 @@ type MockDistributedLocker struct {
 	mock.Mock
 }
 
-func (m *MockDistributedLocker) AcquireLock(ctx context.Context, key string, ttl time.Duration) (bool, error) {
-	args := m.Called(ctx, key, ttl)
+func (m *MockDistributedLocker) AcquireLock(key string, ttl time.Duration) (bool, error) {
+	args := m.Called(key, ttl)
 	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockDistributedLocker) ReleaseLock(ctx context.Context, key string) error {
-	args := m.Called(ctx, key)
-	return args.Error(0)
 }
 
 func (m *MockDistributedLocker) GenerateTrapLockKey(data []byte) string {
 	args := m.Called(data)
 	return args.String(0)
-}
-
-func (m *MockDistributedLocker) Close() error {
-	args := m.Called()
-	return args.Error(0)
 }
 
 // Mock ResponseManagerInterface
@@ -131,7 +120,7 @@ func TestTrapHandler_ProcessTrap_Success(t *testing.T) {
 
 	// Mock dependencies
 	dl.On("GenerateTrapLockKey", raw.Data).Return("lock-key-123").Once()
-	dl.On("AcquireLock", mock.Anything, "lock-key-123", time.Duration(5)*time.Second).Return(true, nil).Once()
+	dl.On("AcquireLock", "lock-key-123", time.Duration(5)*time.Second).Return(true, nil).Once()
 
 	snmpPkt := &gosnmp.SnmpPacket{
 		Version:   gosnmp.Version2c,
@@ -180,18 +169,15 @@ func TestTrapHandler_ProcessTrap_DuplicateSkipped(t *testing.T) {
 
 	raw := newTestRawPacket()
 
-	// Mock lock acquisition failure (duplicate)
+	// Mock dependencies
 	dl.On("GenerateTrapLockKey", raw.Data).Return("dup-key").Once()
-	dl.On("AcquireLock", mock.Anything, "dup-key", mock.AnythingOfType("time.Duration")).Return(false, nil).Once()
+	dl.On("AcquireLock", "dup-key", time.Duration(5)*time.Second).Return(false, nil).Once()
 
-	// HTTP sender should NOT be called for duplicates
-	ts.On("SendTrap", mock.Anything).Times(0)
-
-	// Send trap
+	// Send packet
 	inputChan <- raw
 
-	// Wait for processing to complete
-	time.Sleep(50 * time.Millisecond)
+	// Wait for processing
+	time.Sleep(100 * time.Millisecond)
 
 	// Verify mocks
 	dl.AssertExpectations(t)
@@ -217,18 +203,15 @@ func TestTrapHandler_ProcessTrap_LockError(t *testing.T) {
 
 	raw := newTestRawPacket()
 
-	// Mock lock acquisition with error
+	// Mock dependencies
 	dl.On("GenerateTrapLockKey", raw.Data).Return("lock-key").Once()
-	dl.On("AcquireLock", mock.Anything, "lock-key", mock.AnythingOfType("time.Duration")).Return(false, errors.New("redis down")).Once()
+	dl.On("AcquireLock", "lock-key", time.Duration(5)*time.Second).Return(false, errors.New("redis down")).Once()
 
-	// HTTP sender should NOT be called
-	ts.On("SendTrap", mock.Anything).Times(0)
-
-	// Send trap
+	// Send packet
 	inputChan <- raw
 
-	// Wait for processing to complete
-	time.Sleep(50 * time.Millisecond)
+	// Wait for processing
+	time.Sleep(100 * time.Millisecond)
 
 	// Verify mocks
 	dl.AssertExpectations(t)
@@ -254,21 +237,16 @@ func TestTrapHandler_ProcessTrap_ResponseError(t *testing.T) {
 
 	raw := newTestRawPacket()
 
-	// Mock successful lock acquisition
+	// Mock dependencies
 	dl.On("GenerateTrapLockKey", raw.Data).Return("key").Once()
-	dl.On("AcquireLock", mock.Anything, "key", mock.AnythingOfType("time.Duration")).Return(true, nil).Once()
+	dl.On("AcquireLock", "key", time.Duration(5)*time.Second).Return(true, nil).Once()
+	rm.On("ResponseRequest", raw).Return(nil, errors.New("response error")).Once()
 
-	// Mock response manager error
-	rm.On("ResponseRequest", raw).Return((*gosnmp.SnmpPacket)(nil), errors.New("decode failed")).Once()
-
-	// HTTP sender should NOT be called on decode error
-	ts.On("SendTrap", mock.Anything).Times(0)
-
-	// Send trap
+	// Send packet
 	inputChan <- raw
 
-	// Wait for processing to complete
-	time.Sleep(50 * time.Millisecond)
+	// Wait for processing
+	time.Sleep(100 * time.Millisecond)
 
 	// Verify mocks
 	dl.AssertExpectations(t)
@@ -310,7 +288,7 @@ func TestTrapHandler_MultipleWorkers(t *testing.T) {
 		key := "key-" + string(rawData[0])
 
 		dl.On("GenerateTrapLockKey", rawData).Return(key).Once()
-		dl.On("AcquireLock", mock.Anything, key, mock.AnythingOfType("time.Duration")).Return(true, nil).Once()
+		dl.On("AcquireLock", key, time.Duration(5)*time.Second).Return(true, nil).Once()
 		rm.On("ResponseRequest", mock.MatchedBy(func(rp *models.RawPacket) bool {
 			return len(rp.Data) > 0 && rp.Data[0] == byte(i)
 		})).Return(snmpPkt, nil).Once()

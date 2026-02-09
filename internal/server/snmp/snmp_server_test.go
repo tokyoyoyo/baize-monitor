@@ -4,7 +4,6 @@ import (
 	"baize-monitor/pkg/config"
 	"baize-monitor/pkg/models"
 
-	"context"
 	"net"
 	"testing"
 	"time"
@@ -18,21 +17,12 @@ import (
 type mockDistributedLocker struct {
 }
 
-func (m *mockDistributedLocker) AcquireLock(ctx context.Context, key string, expiration time.Duration) (bool, error) {
+func (m *mockDistributedLocker) AcquireLock(key string, expiration time.Duration) (bool, error) {
 	return true, nil
-}
-
-func (m *mockDistributedLocker) ReleaseLock(ctx context.Context, key string) error {
-	return nil
 }
 
 func (m *mockDistributedLocker) GenerateTrapLockKey(trapData []byte) string {
 	return "mock_key"
-}
-
-// Add Close method to implement DistributedLockerInterface interface
-func (m *mockDistributedLocker) Close() error {
-	return nil
 }
 
 // mockResponseManager is a mock implementation of response manager

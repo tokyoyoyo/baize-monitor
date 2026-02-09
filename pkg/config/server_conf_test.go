@@ -32,12 +32,6 @@ var defaultCfg = &ServerConfig{
 		TrapHandlerConf: &TrapHandlerConfig{WorkerCount: 5, LockTimeout: 30, ProcessingTimeout: 60},
 		MidChannelSize:  100,
 	},
-	RedisConfig: &RedisConfig{
-		Host:     "localhost",
-		Port:     6379,
-		Password: "qwer1234",
-		DB:       0,
-	},
 	LogConfig: &LogConfig{
 		Level:      "info",
 		Format:     "text",

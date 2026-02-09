@@ -16,7 +16,7 @@ import (
 	"baize-monitor/pkg/dto/request"
 	"baize-monitor/pkg/dto/response"
 	"baize-monitor/pkg/models"
-	storage "baize-monitor/pkg/storage/postgres"
+	"baize-monitor/pkg/storage"
 	"baize-monitor/pkg/util"
 
 	"github.com/gin-gonic/gin"

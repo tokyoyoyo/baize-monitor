@@ -1,4 +1,3 @@
-// pkg/storage/gorm_client.go
 package storage
 
 import (
@@ -130,5 +129,6 @@ func GetTableModelsList() []interface{} {
 		&models.BMCTrapParser{},
 		&models.Alert{},
 		&models.User{},
+		&models.DistributedLockRecord{},
 	}
 }

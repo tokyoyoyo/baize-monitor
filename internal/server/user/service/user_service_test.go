@@ -4,7 +4,7 @@ import (
 	"baize-monitor/internal/server/user/repository"
 	"baize-monitor/pkg/config"
 	"baize-monitor/pkg/models"
-	storage "baize-monitor/pkg/storage/postgres"
+	"baize-monitor/pkg/storage"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

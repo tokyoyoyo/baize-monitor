@@ -6,7 +6,7 @@ import (
 	"baize-monitor/pkg/config"
 	"baize-monitor/pkg/dto/request"
 	"baize-monitor/pkg/models"
-	storage "baize-monitor/pkg/storage/postgres"
+	"baize-monitor/pkg/storage"
 	"bytes"
 	"encoding/json"
 	"fmt"
