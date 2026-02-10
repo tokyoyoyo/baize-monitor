@@ -45,7 +45,7 @@ func setupTest(t *testing.T) (service.UserService, repository.UserRepo, util.JWT
 
 	userService := service.NewUserService(db.DB)
 	userRepo := repository.NewUserRepo(db.DB)
-	jwtManager := util.NewJWTManager("test-secret-key")
+	jwtManager := util.NewJWTManager()
 
 	return userService, *userRepo, jwtManager
 }

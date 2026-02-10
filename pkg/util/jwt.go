@@ -2,6 +2,7 @@ package util
 
 import (
 	"errors"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -12,6 +13,8 @@ type JWTClaims struct {
 	UserID      int64           `json:"user_id"`
 	Username    string          `json:"username"`
 	IsAdmin     bool            `json:"is_admin"`
+	IsActive    bool            `json:"is_active"`
+	IsDelete    bool            `json:"is_delete"`
 	Permissions map[string]bool `json:"permissions"`
 	TokenType   string          `json:"token_type,omitempty"` // "access" or "refresh"
 	jwt.RegisteredClaims
@@ -27,7 +30,9 @@ type RefreshTokenClaims struct {
 
 // JWTManager JWT管理器接口
 type JWTManager interface {
-	GenerateAccessToken(userID int64, username string, isAdmin bool, permissions map[string]bool) (string, error)
+	GenerateAccessToken(userID int64, username string,
+		isAdmin, IsActive, IsDelete bool,
+		permissions map[string]bool) (string, error)
 	GenerateRefreshToken(userID int64, username string) (string, error)
 	ValidateAccessToken(tokenString string) (*JWTClaims, error)
 	ValidateRefreshToken(tokenString string) (*RefreshTokenClaims, error)
@@ -39,18 +44,29 @@ type jwtManager struct {
 }
 
 // NewJWTManager 创建新的JWT管理器
-func NewJWTManager(secretKey string) JWTManager {
+func NewJWTManager() JWTManager {
+	secretKey := "baize_JWT_secret_key"
+	baize_JWT_secret_key := os.Getenv("baize_JWT_secret_key")
+
+	if baize_JWT_secret_key != "" {
+		secretKey = baize_JWT_secret_key
+	}
+
 	return &jwtManager{
 		secretKey: []byte(secretKey),
 	}
 }
 
 // GenerateAccessToken 生成访问令牌
-func (j *jwtManager) GenerateAccessToken(userID int64, username string, isAdmin bool, permissions map[string]bool) (string, error) {
+func (j *jwtManager) GenerateAccessToken(userID int64, username string,
+	isAdmin, isActive, isDelete bool,
+	permissions map[string]bool) (string, error) {
 	claims := &JWTClaims{
 		UserID:      userID,
 		Username:    username,
 		IsAdmin:     isAdmin,
+		IsActive:    isActive,
+		IsDelete:    isDelete,
 		Permissions: permissions,
 		TokenType:   "access",
 		RegisteredClaims: jwt.RegisteredClaims{

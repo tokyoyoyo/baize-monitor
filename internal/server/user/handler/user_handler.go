@@ -61,7 +61,9 @@ func (h *UserHandler) Login(c *gin.Context) {
 	}
 
 	// Generate access token and refresh token
-	accessToken, err := h.jwtManager.GenerateAccessToken(user.ID, user.Username, user.IsAdmin, permissions)
+	accessToken, err := h.jwtManager.GenerateAccessToken(user.ID, user.Username,
+		user.IsAdmin, user.IsActive, user.IsDeleted,
+		permissions)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
 			Code:    500,
@@ -141,7 +143,9 @@ func (h *UserHandler) RefreshToken(c *gin.Context) {
 	}
 
 	// Generate new access token
-	accessToken, err := h.jwtManager.GenerateAccessToken(refreshClaims.UserID, refreshClaims.Username, user.IsAdmin, permissions)
+	accessToken, err := h.jwtManager.GenerateAccessToken(refreshClaims.UserID, refreshClaims.Username,
+		user.IsAdmin, user.IsActive, user.IsDeleted,
+		permissions)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
 			Code:    500,
