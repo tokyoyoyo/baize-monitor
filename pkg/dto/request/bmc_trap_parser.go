@@ -283,8 +283,8 @@ func (ru *BMCTrapParserUpdate) UpdateParserRecord(parser *models.BMCTrapParser) 
 
 type BMCTrapParserFilter struct {
 	// 统一使用 json tag，因为数据从 Body 中解析，如果前端传了就用传的值，没传就用 default
-	Page     int `json:"page" binding:"omitempty,min=1" default:"1"`
-	PageSize int `json:"page_size" binding:"omitempty,min=1" default:"10"`
+	Page     int `json:"page" binding:"min=1" default:"1"`
+	PageSize int `json:"page_size" binding:"min=1,max=100" default:"10"`
 
 	// 查询条件：使用指针。如果前端不传，指针为 nil，后端可跳过该条件
 	ParserName  *string `json:"parser_name,omitempty"` // 模糊匹配 (nil或空字符串时忽略)

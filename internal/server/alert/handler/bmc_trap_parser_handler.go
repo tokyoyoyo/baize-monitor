@@ -169,11 +169,6 @@ func (h *BMCTrapParserHandlerImpl) List(c *gin.Context) {
 		return
 	}
 
-	if req.Page <= 0 || req.PageSize <= 0 {
-		req.Page = 1
-		req.PageSize = 10
-	}
-
 	resp, code, err := h.s.List(&req)
 	if err != nil {
 		c.JSON(code, gin.H{

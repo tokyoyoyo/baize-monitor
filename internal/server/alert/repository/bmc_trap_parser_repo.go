@@ -67,18 +67,7 @@ func (r *bmcTrapParserRepoImpl) List(filter *request.BMCTrapParserFilter) (respo
 
 	// Pagination parameters with default and limit
 	page := filter.Page
-	if page == 0 {
-		page = 1
-	}
 	pageSize := filter.PageSize
-	if pageSize == 0 {
-		pageSize = 10
-	}
-	// 防止 pageSize 过大
-	const maxPageSize = 100
-	if pageSize > maxPageSize {
-		pageSize = maxPageSize
-	}
 	offset := (page - 1) * pageSize
 
 	// Query data
