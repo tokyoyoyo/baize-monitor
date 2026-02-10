@@ -13,8 +13,8 @@ type AlertUpdate struct {
 // AlertFilter 定义了告警列表查询的过滤条件
 type AlertFilter struct {
 	// 统一使用 json tag，因为数据从 Body 中解析，如果前端传了就用传的值，没传就用 default
-	Page     int `json:"page" binding:"omitempty,min=1" default:"1"`       // 分页页码，omitempty 表示不传则用默认值
-	PageSize int `json:"page_size" binding:"omitempty,min=1" default:"10"` // 分页大小，omitempty 表示不传则用默认值
+	Page     int `json:"page" binding:"min=1" default:"1"`               // 不传则用默认值
+	PageSize int `json:"page_size" binding:"min=1,max=100" default:"10"` // 不传则用默认值
 
 	// 查询条件：使用指针。如果前端不传，指针为 nil，后端可跳过该条件
 	ParserID            *int64     `json:"parser_id,omitempty"`              // 精确匹配: 解析器ID

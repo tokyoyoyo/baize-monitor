@@ -81,19 +81,9 @@ func (r *AlertRepoImp) List(filter *request.AlertFilter) (response.AlertListResu
 		return response.AlertListResult{}, err
 	}
 
-	// 3. 分页与排序 (增加最大页数限制防止恶意大查询)
+	// 3. 分页与排序
 	page := filter.Page
-	if page == 0 {
-		page = 1
-	}
-	// 防止 pageSize 过大导致内存溢出或慢查询
 	pageSize := filter.PageSize
-	if pageSize == 0 {
-		pageSize = 10
-	}
-	if pageSize > 100 { // 增加硬性上限
-		pageSize = 100
-	}
 	offset := (page - 1) * pageSize
 
 	// 4. 查询数据

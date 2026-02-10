@@ -217,60 +217,60 @@ func TestBMCTrapHandlerImpl_List(t *testing.T) {
 	service := setupTest(t)
 	handler := &BMCTrapHandlerImpl{s: service}
 
+	// 使用循环创建多个测试告警数据
+	trapMessages := []models.TrapMessage{
+		{
+			SourceType: models.TrapSourceTypeBMC,
+			VariableMap: map[string]string{
+				".1.3.6.1.4.1.1234.1.1": "critical",             // AlertLevelOID
+				".1.3.6.1.4.1.1234.1.2": "Test alert content",   // AlertContentOID
+				".1.3.6.1.4.1.1234.1.3": "2023-08-29T10:00:00Z", // AlertTimeOID
+				".1.3.6.1.4.1.1234.1.4": "Power",                // AlertComponentOID
+			},
+		},
+		{
+			SourceType: models.TrapSourceTypeBMC,
+			VariableMap: map[string]string{
+				".1.3.6.1.4.1.1234.1.1": "1",                    // AlertLevelOID (warning)
+				".1.3.6.1.4.1.1234.1.2": "Another test content", // AlertContentOID
+				".1.3.6.1.4.1.1234.1.3": "2023-08-29T11:00:00Z", // AlertTimeOID
+				".1.3.6.1.4.1.1234.1.4": "PSU",                  // AlertComponentOID (maps to Power)
+			},
+		},
+		{
+			SourceType: models.TrapSourceTypeBMC,
+			VariableMap: map[string]string{
+				".1.3.6.1.4.1.1234.1.1": "0",                    // AlertLevelOID (notification)
+				".1.3.6.1.4.1.1234.1.2": "Notification content", // AlertContentOID
+				".1.3.6.1.4.1.1234.1.3": "2023-08-29T12:00:00Z", // AlertTimeOID
+				".1.3.6.1.4.1.1234.1.4": "Fan",                  // AlertComponentOID (not in mapping)
+			},
+		},
+	}
+
+	for _, trapMessage := range trapMessages {
+		jsonData, _ := json.Marshal(trapMessage)
+
+		// 创建请求和响应
+		req, _ := http.NewRequest(http.MethodPost, "/trap", bytes.NewBuffer(jsonData))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		// 创建 Gin 上下文
+		c, _ := gin.CreateTestContext(w)
+		c.Request = req
+
+		// 执行
+		handler.ReceiveTrap(c)
+
+		// 断言
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), "success")
+	}
+
 	// 测试用例 1: 成功获取列表
 	t.Run("Successful List Retrieval", func(t *testing.T) {
-		// 使用循环创建多个测试告警数据
-		trapMessages := []models.TrapMessage{
-			{
-				SourceType: models.TrapSourceTypeBMC,
-				VariableMap: map[string]string{
-					".1.3.6.1.4.1.1234.1.1": "critical",             // AlertLevelOID
-					".1.3.6.1.4.1.1234.1.2": "Test alert content",   // AlertContentOID
-					".1.3.6.1.4.1.1234.1.3": "2023-08-29T10:00:00Z", // AlertTimeOID
-					".1.3.6.1.4.1.1234.1.4": "Power",                // AlertComponentOID
-				},
-			},
-			{
-				SourceType: models.TrapSourceTypeBMC,
-				VariableMap: map[string]string{
-					".1.3.6.1.4.1.1234.1.1": "1",                    // AlertLevelOID (warning)
-					".1.3.6.1.4.1.1234.1.2": "Another test content", // AlertContentOID
-					".1.3.6.1.4.1.1234.1.3": "2023-08-29T11:00:00Z", // AlertTimeOID
-					".1.3.6.1.4.1.1234.1.4": "PSU",                  // AlertComponentOID (maps to Power)
-				},
-			},
-			{
-				SourceType: models.TrapSourceTypeBMC,
-				VariableMap: map[string]string{
-					".1.3.6.1.4.1.1234.1.1": "0",                    // AlertLevelOID (notification)
-					".1.3.6.1.4.1.1234.1.2": "Notification content", // AlertContentOID
-					".1.3.6.1.4.1.1234.1.3": "2023-08-29T12:00:00Z", // AlertTimeOID
-					".1.3.6.1.4.1.1234.1.4": "Fan",                  // AlertComponentOID (not in mapping)
-				},
-			},
-		}
 
-		for _, trapMessage := range trapMessages {
-			jsonData, _ := json.Marshal(trapMessage)
-
-			// 创建请求和响应
-			req, _ := http.NewRequest(http.MethodPost, "/trap", bytes.NewBuffer(jsonData))
-			req.Header.Set("Content-Type", "application/json")
-			w := httptest.NewRecorder()
-
-			// 创建 Gin 上下文
-			c, _ := gin.CreateTestContext(w)
-			c.Request = req
-
-			// 执行
-			handler.ReceiveTrap(c)
-
-			// 断言
-			assert.Equal(t, http.StatusOK, w.Code)
-			assert.Contains(t, w.Body.String(), "success")
-		}
-
-		// 准备测试数据
 		filter := request.AlertFilter{
 			Page:     1,
 			PageSize: 10,
@@ -324,6 +324,30 @@ func TestBMCTrapHandlerImpl_List(t *testing.T) {
 		invalidJSON := []byte(`{"invalid": }`)
 
 		req, _ := http.NewRequest(http.MethodPost, "/list", bytes.NewBuffer(invalidJSON))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		c, _ := gin.CreateTestContext(w)
+		c.Request = req
+
+		// 执行
+		handler.List(c)
+
+		// 断言
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "Invalid request parameters")
+	})
+
+	// 测试用例 4: 零值请求参数
+	t.Run("zero Request Parameters", func(t *testing.T) {
+		filter := request.AlertFilter{
+			Page:     1, // 无效页码
+			PageSize: 0,
+		}
+
+		jsonData, _ := json.Marshal(filter)
+
+		req, _ := http.NewRequest(http.MethodPost, "/list", bytes.NewBuffer(jsonData))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
