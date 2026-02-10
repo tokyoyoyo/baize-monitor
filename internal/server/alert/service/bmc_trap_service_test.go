@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupTest(t *testing.T) (BMCTrapService, *BMCTrapParserCache, repository.BMCTrapParserRepository) {
+func setupTest(_ *testing.T) (BMCTrapService, *BMCTrapParserCache, repository.BMCTrapParserRepository) {
 	testConf, err := config.LoadTestMockServerConfig()
 	if err != nil {
 		panic("")
@@ -77,7 +77,7 @@ func TestBMCTrapServiceImp_Process_NoParser(t *testing.T) {
 	// 添加短暂延时确保数据已写入数据库
 	time.Sleep(10 * time.Millisecond)
 
-	filter := &request.AlertFilter{SourceIP: &ip}
+	filter := &request.AlertFilter{SourceIP: &ip, Page: 1, PageSize: 10}
 	res, _, err := service.List(filter)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), res.Total)
@@ -104,7 +104,10 @@ func TestBMCTrapServiceImp_Process_NewAlert(t *testing.T) {
 	assert.NoError(t, err)
 	ip := tm.SourceIP.String()
 
-	filter := &request.AlertFilter{SourceIP: &ip}
+	filter := &request.AlertFilter{
+		Page:     1,
+		PageSize: 10,
+		SourceIP: &ip}
 	res, _, err := service.List(filter)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), res.Total)
@@ -194,7 +197,10 @@ func TestBMCTrapServiceImp_Process_AutoCloseAlert(t *testing.T) {
 	assert.Equal(t, http.StatusOK, status)
 	assert.NoError(t, err)
 	ip := tmActive.SourceIP.String()
-	filter := &request.AlertFilter{SourceIP: &ip}
+	filter := &request.AlertFilter{
+		Page:     1,
+		PageSize: 10,
+		SourceIP: &ip}
 	res, _, err := service.List(filter)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), res.Total)
