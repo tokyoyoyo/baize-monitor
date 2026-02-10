@@ -436,27 +436,160 @@ func TestBMCTrapParserHandler_List(t *testing.T) {
 		assert.Equal(t, http.StatusCreated, w.Code)
 	}
 
-	// Get list
+	// 测试用例 1: 成功获取列表
+	t.Run("Successful List Retrieval", func(t *testing.T) {
+		filter := request.BMCTrapParserFilter{
+			Page:     1,
+			PageSize: 10,
+		}
 
-	listReq := request.BMCTrapParserFilter{
-		Page:     1,
-		PageSize: 10,
-	}
-	jsonValue, _ := json.Marshal(listReq)
-	req, _ := http.NewRequest("POST", "/bmc-trap-parser", bytes.NewBuffer(jsonValue))
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = req
+		jsonData, _ := json.Marshal(filter)
 
-	handler.List(c)
+		req, _ := http.NewRequest(http.MethodPost, "/list", bytes.NewBuffer(jsonData))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	var listResponse map[string]interface{}
-	err := json.Unmarshal(w.Body.Bytes(), &listResponse)
-	assert.NoError(t, err)
-	assert.Contains(t, listResponse, "data")
+		c, _ := gin.CreateTestContext(w)
+		c.Request = req
 
-	if data, ok := listResponse["data"].([]interface{}); ok {
-		assert.True(t, len(data) >= 3, "Should have at least 3 items in list")
-	}
+		// 执行
+		handler.List(c)
+
+		// 断言
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), "List retrieved successfully")
+	})
+
+	// 测试用例 2: 列表查询失败 - 使用无效的过滤条件
+	t.Run("List Query Failed", func(t *testing.T) {
+		// 准备测试数据
+		filter := request.BMCTrapParserFilter{
+			Page:     -1, // 无效页码
+			PageSize: 10,
+		}
+
+		jsonData, _ := json.Marshal(filter)
+
+		req, _ := http.NewRequest(http.MethodPost, "/list", bytes.NewBuffer(jsonData))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		c, _ := gin.CreateTestContext(w)
+		c.Request = req
+
+		// 执行
+		handler.List(c)
+
+		// 断言
+		// 根据实际实现，这可能会成功或失败，取决于如何处理无效页码
+		assert.NotEqual(t, http.StatusInternalServerError, w.Code) // 假设不会导致内部服务器错误
+	})
+
+	// 测试用例 3: 无效的请求参数
+	t.Run("Invalid Request Parameters", func(t *testing.T) {
+		// 创建错误的请求数据
+		invalidJSON := []byte(`{"invalid": }`)
+
+		req, _ := http.NewRequest(http.MethodPost, "/list", bytes.NewBuffer(invalidJSON))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		c, _ := gin.CreateTestContext(w)
+		c.Request = req
+
+		// 执行
+		handler.List(c)
+
+		// 断言
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "Invalid request parameters")
+	})
+
+	// 测试用例 4: 零值请求参数
+	t.Run("Zero Request Parameters", func(t *testing.T) {
+		filter := request.BMCTrapParserFilter{
+			Page:     1,
+			PageSize: 0, // 无效页大小
+		}
+
+		jsonData, _ := json.Marshal(filter)
+
+		req, _ := http.NewRequest(http.MethodPost, "/list", bytes.NewBuffer(jsonData))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		c, _ := gin.CreateTestContext(w)
+		c.Request = req
+
+		// 执行
+		handler.List(c)
+
+		// 断言
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "Invalid request parameters")
+	})
+
+	// 测试用例 5: 超出范围的 PageSize
+	t.Run("PageSize Exceeds Maximum", func(t *testing.T) {
+		filter := request.BMCTrapParserFilter{
+			Page:     1,
+			PageSize: 101, // 超过最大值100
+		}
+
+		jsonData, _ := json.Marshal(filter)
+
+		req, _ := http.NewRequest(http.MethodPost, "/list", bytes.NewBuffer(jsonData))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		c, _ := gin.CreateTestContext(w)
+		c.Request = req
+
+		// 执行
+		handler.List(c)
+
+		// 断言
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "Invalid request parameters")
+	})
+
+	// 测试用例 6: 空过滤条件（所有指针字段为nil）
+	t.Run("Empty Filter Conditions", func(t *testing.T) {
+		filter := request.BMCTrapParserFilter{
+			Page:     1,
+			PageSize: 10,
+			// 所有可选过滤字段都为nil
+		}
+
+		jsonData, _ := json.Marshal(filter)
+
+		req, _ := http.NewRequest(http.MethodPost, "/list", bytes.NewBuffer(jsonData))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		c, _ := gin.CreateTestContext(w)
+		c.Request = req
+
+		// 执行
+		handler.List(c)
+
+		// 断言
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), "List retrieved successfully")
+		
+		// 验证返回的数据结构
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Contains(t, response, "data")
+		
+		data := response["data"].(map[string]interface{})
+		assert.Contains(t, data, "list")
+		assert.Contains(t, data, "total")
+		assert.Contains(t, data, "page")
+		assert.Contains(t, data, "page_size")
+		
+		list := data["list"].([]interface{})
+		assert.True(t, len(list) >= 3, "Should have at least 3 items in list")
+	})
 }
