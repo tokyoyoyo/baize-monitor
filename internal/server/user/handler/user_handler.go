@@ -9,20 +9,20 @@ import (
 	"baize-monitor/internal/server/user/service"
 	"baize-monitor/pkg/dto/request"
 	"baize-monitor/pkg/dto/response"
-	"baize-monitor/pkg/util"
+	"baize-monitor/pkg/utils"
 )
 
 // UserHandler user handler
 type UserHandler struct {
 	userService service.UserService
-	jwtManager  util.JWTManager
+	jwtManager  utils.JWTManager
 }
 
 // NewUserHandler creates a new user handler
-func NewUserHandler(userService service.UserService, jwtManager util.JWTManager) *UserHandler {
+func NewUserHandler(userService service.UserService) *UserHandler {
 	return &UserHandler{
 		userService: userService,
-		jwtManager:  jwtManager,
+		jwtManager:  utils.JWTManagerInstance,
 	}
 }
 
@@ -178,17 +178,6 @@ func (h *UserHandler) Logout(c *gin.Context) {
 
 // CreateUser create user (admin only)
 func (h *UserHandler) CreateUser(c *gin.Context) {
-	// Check if current user is admin
-	isAdmin, exists := c.Get("is_admin")
-	if !exists || !isAdmin.(bool) {
-		c.JSON(http.StatusForbidden, response.ErrorResponse{
-			Code:    403,
-			Success: false,
-			Message: "Only administrators can create users",
-		})
-		return
-	}
-
 	var req request.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{
@@ -228,17 +217,6 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 
 // DeleteUser delete user (admin only)
 func (h *UserHandler) DeleteUser(c *gin.Context) {
-	// Check if current user is admin
-	isAdmin, exists := c.Get("is_admin")
-	if !exists || !isAdmin.(bool) {
-		c.JSON(http.StatusForbidden, response.ErrorResponse{
-			Code:    403,
-			Success: false,
-			Message: "Only administrators can delete users",
-		})
-		return
-	}
-
 	var req request.DeleteUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{
@@ -268,17 +246,6 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 
 // UpdateUserStatus update user status (admin only)
 func (h *UserHandler) UpdateUserStatus(c *gin.Context) {
-	// Check if current user is admin
-	isAdmin, exists := c.Get("is_admin")
-	if !exists || !isAdmin.(bool) {
-		c.JSON(http.StatusForbidden, response.ErrorResponse{
-			Code:    403,
-			Success: false,
-			Message: "Only administrators can update user status",
-		})
-		return
-	}
-
 	var req request.UpdateUserStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{
@@ -308,17 +275,6 @@ func (h *UserHandler) UpdateUserStatus(c *gin.Context) {
 
 // GrantPermissions grant permissions (admin only)
 func (h *UserHandler) GrantPermissions(c *gin.Context) {
-	// Check if current user is admin
-	isAdmin, exists := c.Get("is_admin")
-	if !exists || !isAdmin.(bool) {
-		c.JSON(http.StatusForbidden, response.ErrorResponse{
-			Code:    403,
-			Success: false,
-			Message: "Only administrators can grant permissions",
-		})
-		return
-	}
-
 	var req request.GrantPermissionsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{
@@ -348,17 +304,6 @@ func (h *UserHandler) GrantPermissions(c *gin.Context) {
 
 // RevokePermissions revoke permissions (admin only)
 func (h *UserHandler) RevokePermissions(c *gin.Context) {
-	// Check if current user is admin
-	isAdmin, exists := c.Get("is_admin")
-	if !exists || !isAdmin.(bool) {
-		c.JSON(http.StatusForbidden, response.ErrorResponse{
-			Code:    403,
-			Success: false,
-			Message: "Only administrators can revoke permissions",
-		})
-		return
-	}
-
 	var req request.RevokePermissionsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, response.ErrorResponse{
@@ -388,17 +333,6 @@ func (h *UserHandler) RevokePermissions(c *gin.Context) {
 
 // ListUsers get user list (admin only)
 func (h *UserHandler) ListUsers(c *gin.Context) {
-	// Check if current user is admin
-	isAdmin, exists := c.Get("is_admin")
-	if !exists || !isAdmin.(bool) {
-		c.JSON(http.StatusForbidden, response.ErrorResponse{
-			Code:    403,
-			Success: false,
-			Message: "Only administrators can view user list",
-		})
-		return
-	}
-
 	// Bind pagination parameters
 	var req request.ListUsersRequest
 	if err := c.ShouldBindQuery(&req); err != nil {

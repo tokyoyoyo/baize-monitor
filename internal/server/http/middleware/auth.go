@@ -1,13 +1,14 @@
 package middleware
 
-// TODO : add auth middleware
-
 import (
+	"fmt"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
+	"baize-monitor/pkg/constants"
+	"baize-monitor/pkg/utils"
 )
 
 // Auth 认证中间件
@@ -31,7 +32,8 @@ func Auth() gin.HandlerFunc {
 		}
 
 		// 3. 验证Token
-		if !isValidToken(token) {
+		claims, err := utils.JWTManagerInstance.ValidateAccessToken(token)
+		if err != nil {
 			c.JSON(401, gin.H{
 				"code":    401,
 				"message": "无效的认证Token",
@@ -40,52 +42,67 @@ func Auth() gin.HandlerFunc {
 			return
 		}
 
-		// 4. 设置用户信息到上下文
-		// 这里可以解析JWT或从数据库查询用户信息
-		c.Set("user_id", "admin") // 示例，实际应该从Token解析
-		c.Set("user_role", "admin")
+		// 4. 检查用户状态
+		if !claims.IsActive || claims.IsDelete {
+			c.JSON(401, gin.H{
+				"code":    401,
+				"message": "用户账户不可用",
+			})
+			c.Abort()
+			return
+		}
+		// 5. 设置用户信息到上下文
+		c.Set("user_id", claims.UserID)
+		c.Set("username", claims.Username)
+		c.Set("is_admin", claims.IsAdmin)
+		c.Set("permissions", claims.Permissions)
+
+		if claims.IsAdmin {
+			c.Next()
+			return
+		}
+
+		// 6. 权限检查
+		if !hasPermission(claims.Permissions, c.Request.URL.Path) {
+			c.JSON(403, gin.H{
+				"code":    403,
+				"message": "没有访问该资源的权限",
+			})
+			c.Abort()
+			return
+		}
 
 		c.Next()
 	}
 }
 
-// extractToken 从请求中提取Token
-func extractToken(c *gin.Context) string {
-	// 1. 从Header中获取
-	bearerToken := c.GetHeader("Authorization")
-	if bearerToken != "" && strings.HasPrefix(bearerToken, "Bearer ") {
-		return bearerToken[7:] // 去掉"Bearer "前缀
+// hasPermission 检查用户是否有访问指定路径的权限
+func hasPermission(userPermissions map[string]bool, path string) bool {
+	// 检查每个模块的路由
+	for module, routes := range constants.ModuleRoutes {
+		if userPermissions[module] {
+			for _, routePattern := range routes {
+				if matchRoute(routePattern, path) {
+					return true
+				}
+			}
+		}
 	}
 
-	// 2. 从Query参数中获取
-	token := c.Query("token")
-	if token != "" {
-		return token
-	}
-
-	// 3. 从Cookie中获取
-	token, _ = c.Cookie("token")
-	return token
-}
-
-// isValidToken 验证Token是否有效
-func isValidToken(token string) bool {
-	// TODO
 	return false
 }
 
-// shouldSkipAuth 检查是否应该跳过认证
-func shouldSkipAuth(path string) bool {
-	skipPaths := []string{
-		"/health",
-		"/ready",
-		"/metrics",
-		"/api/v1/alerts/trap", // SNMP陷阱接收接口通常不需要认证
-		"/static",
-	}
-
-	for _, skipPath := range skipPaths {
-		if strings.HasPrefix(path, skipPath) {
+// matchRoute 匹配路由模式
+func matchRoute(pattern, pathStr string) bool {
+	if strings.Contains(pattern, "*") {
+		// 假设通配符模式都是以"/*"结尾，去掉这个部分，然后做前缀匹配
+		prefix := strings.TrimSuffix(pattern, "/*")
+		if strings.HasPrefix(pathStr, prefix) {
+			return true
+		}
+	} else {
+		// 不含通配符，精确匹配
+		if pathStr == pattern {
 			return true
 		}
 	}
@@ -93,21 +110,51 @@ func shouldSkipAuth(path string) bool {
 	return false
 }
 
-// CORS 跨域中间件
-func CORS() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
+// shouldSkipAuth 检查是否应该跳过认证
+func shouldSkipAuth(pathStr string) bool {
+	skipPatterns := []string{
+		fmt.Sprintf("%s/%s", constants.APIV1Prefix, constants.PermissionHealthCheckPass),
+		fmt.Sprintf("%s/%s/*", constants.APIV1Prefix, constants.PermissionAlertPass),
+		fmt.Sprintf("%s/%s/*", constants.APIV1Prefix, constants.PermissionUserAuthPass),
 	}
+
+	for _, pattern := range skipPatterns {
+		// 检查是否包含通配符
+		if matchRoute(pattern, pathStr) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// extractToken 从请求中提取Token
+func extractToken(c *gin.Context) string {
+	// 1. 从 Authorization Header 获取
+	authHeader := c.GetHeader("Authorization")
+	if authHeader != "" {
+		// 检查 Bearer Token（大小写不敏感）
+		const bearerPrefix = "Bearer "
+		if len(authHeader) > len(bearerPrefix) &&
+			strings.EqualFold(authHeader[:len(bearerPrefix)], bearerPrefix) {
+			token := strings.TrimSpace(authHeader[len(bearerPrefix):])
+			if token != "" {
+				return token
+			}
+		}
+	}
+
+	// 2. 从 Query 参数获取
+	if token := strings.TrimSpace(c.Query("token")); token != "" {
+		return token
+	}
+
+	// 3. 从 Cookie 获取
+	if token, err := c.Cookie("token"); err == nil && token != "" {
+		return token
+	}
+
+	return ""
 }
 
 // RequestID 请求ID中间件
@@ -126,6 +173,6 @@ func RequestID() gin.HandlerFunc {
 }
 
 func generateRequestID() string {
-	// TODO
-	return time.Now().Format("20060102150405") + "-" + strings.ToUpper(uuid.New().String())
+	// 使用UUID生成请求ID
+	return strings.ToUpper(uuid.New().String())
 }

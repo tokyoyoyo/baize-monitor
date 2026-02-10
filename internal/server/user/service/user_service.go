@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	"baize-monitor/internal/server/user/repository"
+	"baize-monitor/pkg/constants"
 	"baize-monitor/pkg/models"
 )
 
@@ -79,7 +80,7 @@ func (s *userServiceImpl) CreateUser(username, password string) (*models.User, e
 		IsAdmin:      false,
 		IsActive:     true,
 		IsDeleted:    false,
-		Permissions:  make(map[string]bool), // No permissions initially
+		Permissions:  constants.DefaultPermissions, // No permissions initially
 	}
 
 	err = s.userRepo.Create(user)

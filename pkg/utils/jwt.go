@@ -1,4 +1,4 @@
-package util
+package utils
 
 import (
 	"errors"
@@ -43,8 +43,10 @@ type jwtManager struct {
 	secretKey []byte
 }
 
+var JWTManagerInstance = newJWTManager()
+
 // NewJWTManager 创建新的JWT管理器
-func NewJWTManager() JWTManager {
+func newJWTManager() JWTManager {
 	secretKey := "baize_JWT_secret_key"
 	baize_JWT_secret_key := os.Getenv("baize_JWT_secret_key")
 

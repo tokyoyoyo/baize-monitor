@@ -13,17 +13,17 @@ import (
 	"baize-monitor/internal/server/user/repository"
 	"baize-monitor/internal/server/user/service"
 	"baize-monitor/pkg/config"
+	"baize-monitor/pkg/constants"
 	"baize-monitor/pkg/dto/request"
 	"baize-monitor/pkg/dto/response"
 	"baize-monitor/pkg/models"
 	"baize-monitor/pkg/storage"
-	"baize-monitor/pkg/util"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
-func setupTest(t *testing.T) (service.UserService, repository.UserRepo, util.JWTManager) {
+func setupTest(t *testing.T) (service.UserService, repository.UserRepo) {
 	testConf, err := config.LoadTestMockServerConfig()
 	if err != nil {
 		t.Fatalf("Failed to load test config: %v", err)
@@ -45,9 +45,8 @@ func setupTest(t *testing.T) (service.UserService, repository.UserRepo, util.JWT
 
 	userService := service.NewUserService(db.DB)
 	userRepo := repository.NewUserRepo(db.DB)
-	jwtManager := util.NewJWTManager()
 
-	return userService, *userRepo, jwtManager
+	return userService, *userRepo
 }
 
 // createAdminUser creates a real admin user for testing
@@ -85,14 +84,14 @@ func createRegularUser(userService service.UserService, username, password strin
 
 func TestLogin_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	userService, _, jwtManager := setupTest(t)
+	userService, _ := setupTest(t)
 
 	// Create a test user
 	testUser, err := userService.CreateUser("testuser", "testpassword")
 	assert.NoError(t, err)
 	assert.NotNil(t, testUser)
 
-	handler := NewUserHandler(userService, jwtManager)
+	handler := NewUserHandler(userService)
 	router := gin.Default()
 	router.POST("/login", handler.Login)
 
@@ -130,14 +129,14 @@ func TestLogin_Success(t *testing.T) {
 	assert.NotEmpty(t, loginResp.RefreshToken)
 	assert.Equal(t, testUser.ID, loginResp.ID)
 	assert.Equal(t, "testuser", loginResp.Username)
-	assert.Equal(t, map[string]bool{}, loginResp.Permissions)
+	assert.Equal(t, constants.DefaultPermissions, loginResp.Permissions)
 }
 
 func TestLogin_InvalidCredentials(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	userService, _, jwtManager := setupTest(t)
+	userService, _ := setupTest(t)
 
-	handler := NewUserHandler(userService, jwtManager)
+	handler := NewUserHandler(userService)
 	router := gin.Default()
 	router.POST("/login", handler.Login)
 
@@ -165,9 +164,9 @@ func TestLogin_InvalidCredentials(t *testing.T) {
 
 func TestCreateUser_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	userService, _, jwtManager := setupTest(t)
+	userService, _ := setupTest(t)
 
-	handler := NewUserHandler(userService, jwtManager)
+	handler := NewUserHandler(userService)
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
 		c.Set("is_admin", true)
@@ -213,48 +212,14 @@ func TestCreateUser_Success(t *testing.T) {
 	assert.Equal(t, "newuser", createdUser.Username)
 }
 
-func TestCreateUser_Unauthorized(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	userService, _, jwtManager := setupTest(t)
-
-	handler := NewUserHandler(userService, jwtManager)
-	router := gin.Default()
-	router.Use(func(c *gin.Context) {
-		c.Set("is_admin", false) // Non-admin user
-		c.Next()
-	})
-	router.POST("/users/create", handler.CreateUser)
-
-	// Prepare create user request
-	createReq := request.CreateUserRequest{
-		Username: "unauthorizeduser",
-		Password: "password123",
-	}
-	jsonData, _ := json.Marshal(createReq)
-
-	req, _ := http.NewRequest("POST", "/users/create", bytes.NewBuffer(jsonData))
-	req.Header.Set("Content-Type", "application/json")
-	resp := httptest.NewRecorder()
-
-	router.ServeHTTP(resp, req)
-
-	assert.Equal(t, http.StatusForbidden, resp.Code)
-
-	var errorResp response.ErrorResponse
-	err := json.Unmarshal(resp.Body.Bytes(), &errorResp)
-	assert.NoError(t, err)
-	assert.Equal(t, 403, errorResp.Code)
-	assert.Contains(t, errorResp.Message, "Only administrators can create users")
-}
-
 func TestDeleteUser_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	userService, _, jwtManager := setupTest(t)
+	userService, _ := setupTest(t)
 
 	// Create user to delete
 	userToDelete := createRegularUser(userService, "todelete", "deletepass")
 
-	handler := NewUserHandler(userService, jwtManager)
+	handler := NewUserHandler(userService)
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
 		c.Set("is_admin", true)
@@ -291,12 +256,12 @@ func TestDeleteUser_Success(t *testing.T) {
 
 func TestDeleteUser_AdminNotAllowed(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	userService, userRepo, jwtManager := setupTest(t)
+	userService, userRepo := setupTest(t)
 
 	// Create admin user (this will be the admin that we try to delete)
 	adminUser := createAdminUser(userRepo)
 
-	handler := NewUserHandler(userService, jwtManager)
+	handler := NewUserHandler(userService)
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
 		c.Set("is_admin", true)
@@ -327,12 +292,12 @@ func TestDeleteUser_AdminNotAllowed(t *testing.T) {
 
 func TestUpdateUserStatus_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	userService, _, jwtManager := setupTest(t)
+	userService, _ := setupTest(t)
 
 	// Create user to update
 	userToUpdate := createRegularUser(userService, "toupdate", "updatepass")
 
-	handler := NewUserHandler(userService, jwtManager)
+	handler := NewUserHandler(userService)
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
 		c.Set("is_admin", true)
@@ -370,7 +335,7 @@ func TestUpdateUserStatus_Success(t *testing.T) {
 
 func TestListUsers_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	userService, _, jwtManager := setupTest(t)
+	userService, _ := setupTest(t)
 
 	// Create multiple regular users
 	users := []struct {
@@ -386,7 +351,7 @@ func TestListUsers_Success(t *testing.T) {
 		createRegularUser(userService, u.username, u.password)
 	}
 
-	handler := NewUserHandler(userService, jwtManager)
+	handler := NewUserHandler(userService)
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
 		c.Set("is_admin", true)
@@ -430,40 +395,43 @@ func TestListUsers_Success(t *testing.T) {
 	}
 }
 
-func TestListUsers_Unauthorized(t *testing.T) {
+func TestListUsers_badRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	userService, _, jwtManager := setupTest(t)
+	userService, _ := setupTest(t)
 
-	handler := NewUserHandler(userService, jwtManager)
+	handler := NewUserHandler(userService)
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
-		c.Set("is_admin", false) // Non-admin user
+		c.Set("is_admin", true)
 		c.Next()
 	})
 	router.GET("/users/list", handler.ListUsers)
 
-	req, _ := http.NewRequest("GET", "/users/list", nil)
+	// Test with invalid page_size=0
+	req, _ := http.NewRequest("GET", "/users/list?page=1&page_size=0", nil)
 	resp := httptest.NewRecorder()
 
 	router.ServeHTTP(resp, req)
 
-	assert.Equal(t, http.StatusForbidden, resp.Code)
+	// Should return 400 for invalid parameters
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
 
 	var errorResp response.ErrorResponse
 	err := json.Unmarshal(resp.Body.Bytes(), &errorResp)
 	assert.NoError(t, err)
-	assert.Equal(t, 403, errorResp.Code)
-	assert.Contains(t, errorResp.Message, "Only administrators can view user list")
+	assert.Equal(t, 400, errorResp.Code)
+	assert.False(t, errorResp.Success)
+	assert.Contains(t, errorResp.Message, "Invalid pagination parameters")
 }
 
 func TestGrantPermissions_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	userService, _, jwtManager := setupTest(t)
+	userService, _ := setupTest(t)
 
 	// Create user to grant permissions
 	userToGrant := createRegularUser(userService, "grantuser", "grantpass")
 
-	handler := NewUserHandler(userService, jwtManager)
+	handler := NewUserHandler(userService)
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
 		c.Set("is_admin", true)
@@ -500,12 +468,23 @@ func TestGrantPermissions_Success(t *testing.T) {
 	// Verify permissions were granted
 	grantedPerms, err := userService.GetUserPermissions(userToGrant.ID)
 	assert.NoError(t, err)
-	assert.Equal(t, permissions, grantedPerms)
+
+	// Expected permissions should include both default permissions and granted permissions
+	expectedPerms := make(map[string]bool)
+	// Add default permissions
+	for k, v := range constants.DefaultPermissions {
+		expectedPerms[k] = v
+	}
+	// Add granted permissions
+	for k, v := range permissions {
+		expectedPerms[k] = v
+	}
+	assert.Equal(t, expectedPerms, grantedPerms)
 }
 
 func TestRevokePermissions_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	userService, _, jwtManager := setupTest(t)
+	userService, _ := setupTest(t)
 
 	// Create user and grant permissions first
 	userToRevoke := createRegularUser(userService, "revokeuser", "revokepass")
@@ -517,7 +496,7 @@ func TestRevokePermissions_Success(t *testing.T) {
 	err := userService.GrantPermissions(userToRevoke.ID, permissions)
 	assert.NoError(t, err)
 
-	handler := NewUserHandler(userService, jwtManager)
+	handler := NewUserHandler(userService)
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
 		c.Set("is_admin", true)
@@ -550,5 +529,16 @@ func TestRevokePermissions_Success(t *testing.T) {
 	// Verify permissions were revoked
 	remainingPerms, err := userService.GetUserPermissions(userToRevoke.ID)
 	assert.NoError(t, err)
-	assert.Equal(t, map[string]bool{"read": true}, remainingPerms)
+
+	// Expected remaining permissions should include default permissions plus remaining custom permissions
+	expectedPerms := make(map[string]bool)
+	// Add default permissions
+	for k, v := range constants.DefaultPermissions {
+		expectedPerms[k] = v
+	}
+	// Add remaining custom permission ("read")
+	expectedPerms["read"] = true
+	assert.Equal(t, expectedPerms, remainingPerms)
 }
+
+

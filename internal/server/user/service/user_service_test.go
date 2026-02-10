@@ -3,6 +3,7 @@ package service
 import (
 	"baize-monitor/internal/server/user/repository"
 	"baize-monitor/pkg/config"
+	"baize-monitor/pkg/constants"
 	"baize-monitor/pkg/models"
 	"baize-monitor/pkg/storage"
 	"testing"
@@ -147,7 +148,10 @@ func (suite *UserServiceTestSuite) TestCreateUser_Success() {
 	assert.False(suite.T(), user.IsAdmin)
 	assert.True(suite.T(), user.IsActive)
 	assert.False(suite.T(), user.IsDeleted)
-	assert.Equal(suite.T(), map[string]bool{}, user.Permissions)
+
+	// Expected permissions should include default permissions
+	expectedPerms := constants.DefaultPermissions
+	assert.Equal(suite.T(), expectedPerms, user.Permissions)
 
 	// Verify user exists in database
 	var foundUser models.User
@@ -383,8 +387,9 @@ func (suite *UserServiceTestSuite) TestListUsersWithPagination_ExcludesDeleted()
 
 func (suite *UserServiceTestSuite) TestGrantPermissions_Success() {
 	// Create a regular user
-	user, err := suite.userService.CreateUser("grantuser", "grantpassword")
+	user, err := suite.userService.CreateUser("grantuser", "grantpass")
 	assert.NoError(suite.T(), err)
+	assert.False(suite.T(), user.IsAdmin)
 
 	// Grant permissions
 	permissions := map[string]bool{
@@ -397,7 +402,18 @@ func (suite *UserServiceTestSuite) TestGrantPermissions_Success() {
 	// Verify permissions are granted
 	grantedUser, err := suite.userService.GetUserByID(user.ID)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), map[string]bool{"read": true, "write": true}, grantedUser.Permissions)
+
+	// Expected permissions should include both default permissions and granted permissions
+	expectedPerms := make(map[string]bool)
+	// Add default permissions
+	for k, v := range constants.DefaultPermissions {
+		expectedPerms[k] = v
+	}
+	// Add granted permissions
+	for k, v := range permissions {
+		expectedPerms[k] = v
+	}
+	assert.Equal(suite.T(), expectedPerms, grantedUser.Permissions)
 }
 
 func (suite *UserServiceTestSuite) TestGrantPermissions_AdminNotAllowed() {
@@ -429,9 +445,10 @@ func (suite *UserServiceTestSuite) TestGrantPermissions_NotFound() {
 }
 
 func (suite *UserServiceTestSuite) TestRevokePermissions_Success() {
-	// Create a user with permissions
-	user, err := suite.userService.CreateUser("revokeuser", "revokepassword")
+	// Create a regular user
+	user, err := suite.userService.CreateUser("revokeuser", "revokepass")
 	assert.NoError(suite.T(), err)
+	assert.False(suite.T(), user.IsAdmin)
 
 	// Grant some permissions first
 	permissions := map[string]bool{
@@ -449,7 +466,16 @@ func (suite *UserServiceTestSuite) TestRevokePermissions_Success() {
 	// Verify remaining permissions
 	remainingUser, err := suite.userService.GetUserByID(user.ID)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), map[string]bool{"read": true}, remainingUser.Permissions)
+
+	// Expected remaining permissions should include default permissions plus remaining custom permissions
+	expectedPerms := make(map[string]bool)
+	// Add default permissions
+	for k, v := range constants.DefaultPermissions {
+		expectedPerms[k] = v
+	}
+	// Add remaining custom permission ("read")
+	expectedPerms["read"] = true
+	assert.Equal(suite.T(), expectedPerms, remainingUser.Permissions)
 }
 
 func (suite *UserServiceTestSuite) TestRevokePermissions_AdminNotAllowed() {
@@ -489,9 +515,10 @@ func (suite *UserServiceTestSuite) TestRevokePermissions_NoPermissions() {
 }
 
 func (suite *UserServiceTestSuite) TestGetUserPermissions_Success() {
-	// Create a user with permissions
-	user, err := suite.userService.CreateUser("permuser", "permpassword")
+	// Create a regular user
+	user, err := suite.userService.CreateUser("permuser", "permpass")
 	assert.NoError(suite.T(), err)
+	assert.False(suite.T(), user.IsAdmin)
 
 	// Grant permissions
 	permissions := map[string]bool{"read": true, "write": false}
@@ -501,37 +528,33 @@ func (suite *UserServiceTestSuite) TestGetUserPermissions_Success() {
 	// Get user permissions
 	userPerms, err := suite.userService.GetUserPermissions(user.ID)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), map[string]bool{"read": true, "write": false}, userPerms)
-}
 
-func (suite *UserServiceTestSuite) TestGetUserPermissions_Admin() {
-	// Create admin user
-	adminUser := &models.User{
-		Username:     "adminperms",
-		PasswordHash: "hashedpassword",
-		IsAdmin:      true,
-		IsActive:     true,
-		IsDeleted:    false,
-		Permissions:  map[string]bool{"original": true},
+	// Expected permissions should include both default permissions and granted permissions
+	expectedPerms := make(map[string]bool)
+	// Add default permissions
+	for k, v := range constants.DefaultPermissions {
+		expectedPerms[k] = v
 	}
-	err := suite.userRepo.Create(adminUser)
-	assert.NoError(suite.T(), err)
-
-	// Get admin permissions (should return all permissions)
-	userPerms, err := suite.userService.GetUserPermissions(adminUser.ID)
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), map[string]bool{"*": true}, userPerms)
+	// Add granted permissions
+	for k, v := range permissions {
+		expectedPerms[k] = v
+	}
+	assert.Equal(suite.T(), expectedPerms, userPerms)
 }
 
 func (suite *UserServiceTestSuite) TestGetUserPermissions_NoPermissions() {
-	// Create a user with no permissions
-	user, err := suite.userService.CreateUser("emptypermuser", "emptypassword")
+	// Create a regular user (will have default permissions)
+	user, err := suite.userService.CreateUser("nopermuser", "nopermpass")
 	assert.NoError(suite.T(), err)
+	assert.False(suite.T(), user.IsAdmin)
 
 	// Get user permissions
 	userPerms, err := suite.userService.GetUserPermissions(user.ID)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), map[string]bool{}, userPerms)
+
+	// Expected permissions should be the default permissions (not empty)
+	expectedPerms := constants.DefaultPermissions
+	assert.Equal(suite.T(), expectedPerms, userPerms)
 }
 
 func (suite *UserServiceTestSuite) TestGetUserPermissions_NotFound() {

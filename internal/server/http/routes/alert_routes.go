@@ -2,7 +2,9 @@ package routes
 
 import (
 	"baize-monitor/internal/server/alert/handler"
+	"baize-monitor/internal/server/http/middleware"
 	"baize-monitor/pkg/constants"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -18,17 +20,29 @@ type AlertRouterImpl struct {
 
 func NewAlertRouter(bmcTraprH handler.BMCTrapHandler) AlertRouter {
 	router := gin.New()
+	router.Use(middleware.RequestID())
+	router.Use(middleware.Auth())
 
 	ar := &AlertRouterImpl{router: router}
+	router.POST(fmt.Sprintf("/%s", constants.PermissionHealthCheckPass), ar.healthCheck)
 
 	// API v1 分组
 	apiV1 := router.Group(constants.APIV1Prefix)
 
-	router.GET("/health", ar.healthCheck)
+	alerttManagement := apiV1.Group(fmt.Sprintf("/%s", constants.PermissionAlertManagement))
+	{
+		alerttManagement.POST("/update", bmcTraprH.Update)
+	}
 
-	apiV1.POST(constants.BMCAlertUploadEndpoint, bmcTraprH.ReceiveTrap)
-	apiV1.POST("/update", bmcTraprH.Update)
-	apiV1.POST("/list", bmcTraprH.List)
+	AlertRead := apiV1.Group(fmt.Sprintf("/%s", constants.PermissionAlertRead))
+	{
+		AlertRead.POST("/list", bmcTraprH.List)
+	}
+
+	alertPass := apiV1.Group(fmt.Sprintf("/%s", constants.PermissionAlertPass))
+	{
+		alertPass.POST(constants.BMCAlertUploadEndpoint, bmcTraprH.ReceiveTrap)
+	}
 
 	return ar
 }
