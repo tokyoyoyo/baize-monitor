@@ -32,31 +32,31 @@ func NewBMCTrapParserServiceImp(repo repository.BMCTrapParserRepository) *BMCTra
 
 func (s *BMCTrapParserServiceImp) validateOID(oid, fieldName string) error {
 	if strings.TrimSpace(oid) == "" {
-		return fmt.Errorf("%s不能为空", fieldName)
+		return fmt.Errorf("%s cannot be empty", fieldName)
 	}
 
 	if len(oid) > 500 {
-		return fmt.Errorf("%s长度不能超过500个字符", fieldName)
+		return fmt.Errorf("%s length cannot exceed 500 characters", fieldName)
 	}
 
 	if !constants.OidFormatRegex.MatchString(oid) {
-		return fmt.Errorf("%s格式不正确,必须是数字点分隔的格式", fieldName)
+		return fmt.Errorf("%s format is invalid, must be numeric dot-separated format", fieldName)
 	}
 
 	return nil
 }
 
-// validateRequiredOIDs 如果oid存在就验证。先判断是否为空决定要不要跳过，再清除空格，避免遗漏多个空格的情况
+// validateRequiredOIDs validates OIDs if they exist. First check if empty to skip, then trim spaces to avoid missing multiple spaces
 func (s *BMCTrapParserServiceImp) validateRequiredOIDs(req *request.BMCTrapParserCreate) error {
-	// 验证四个必需的OID
+	// Validate four required OIDs
 	requiredOIDs := []struct {
 		oid       string
 		fieldName string
 	}{
-		{strings.TrimSpace(req.AlertLevelOID), "告警级别OID"},
-		{strings.TrimSpace(req.AlertContentOID), "告警内容OID"},
-		{strings.TrimSpace(req.AlertTimeOID), "告警时间OID"},
-		{strings.TrimSpace(req.AlertComponentOID), "告警组件OID"},
+		{strings.TrimSpace(req.AlertLevelOID), "Alert Level OID"},
+		{strings.TrimSpace(req.AlertContentOID), "Alert Content OID"},
+		{strings.TrimSpace(req.AlertTimeOID), "Alert Time OID"},
+		{strings.TrimSpace(req.AlertComponentOID), "Alert Component OID"},
 	}
 
 	for _, item := range requiredOIDs {
@@ -68,14 +68,14 @@ func (s *BMCTrapParserServiceImp) validateRequiredOIDs(req *request.BMCTrapParse
 		}
 	}
 
-	// 验证可选的OID（如果启用自动关闭）
+	// Validate optional OIDs (if auto-close is enabled)
 	if req.EnableAutoClose {
 		requiredOIDs = []struct {
 			oid       string
 			fieldName string
 		}{
-			{strings.TrimSpace(req.AlertIndexOID), "告警索引OID"},
-			{strings.TrimSpace(req.AlertStatusOID), "告警状态OID"},
+			{strings.TrimSpace(req.AlertIndexOID), "Alert Index OID"},
+			{strings.TrimSpace(req.AlertStatusOID), "Alert Status OID"},
 		}
 
 		for _, item := range requiredOIDs {
@@ -86,13 +86,12 @@ func (s *BMCTrapParserServiceImp) validateRequiredOIDs(req *request.BMCTrapParse
 				return err
 			}
 		}
-
 	}
 
-	// 验证组件间关联OID
+	// Validate inter-component correlation OID
 	if req.EnableContactInterComponentAlerts {
 		if req.ContactInterComponentIdentifierOID != "" {
-			if err := s.validateOID(strings.TrimSpace(req.ContactInterComponentIdentifierOID), "组件间关联OID"); err != nil {
+			if err := s.validateOID(strings.TrimSpace(req.ContactInterComponentIdentifierOID), "Inter-component Correlation OID"); err != nil {
 				return err
 			}
 		}
@@ -102,49 +101,49 @@ func (s *BMCTrapParserServiceImp) validateRequiredOIDs(req *request.BMCTrapParse
 }
 
 func (s *BMCTrapParserServiceImp) validateMappings(req *request.BMCTrapParserCreate) error {
-	// 验证级别映射
+	// Validate level mappings
 	if len(req.LevelMappings) == 0 {
-		return errors.New("告警级别映射不能为空")
+		return errors.New("alert level mappings cannot be empty")
 	}
 
 	for key, value := range req.LevelMappings {
 		if strings.TrimSpace(key) == "" {
-			return errors.New("级别映射的键不能为空")
+			return errors.New("level mapping key cannot be empty")
 		}
-		// 验证值是否是有效的告警级别
+		// Validate if value is a valid alert level
 		if !isValidAlertLevel(value) {
-			return fmt.Errorf("无效的告警级别：%s（键：%s）", value, key)
+			return fmt.Errorf("invalid alert level: %s (key: %s)", value, key)
 		}
 	}
 
-	// 如果启用自动关闭，验证状态映射
+	// If auto-close is enabled, validate status mappings
 	if req.EnableAutoClose {
 		if len(req.StatusMappings) != 2 {
-			return errors.New("启用自动关闭时，告警状态映射不能为空")
+			return errors.New("when auto-close is enabled, alert status mappings cannot be empty")
 		}
 
 		for key, value := range req.StatusMappings {
 			if strings.TrimSpace(key) == "" {
-				return errors.New("状态映射的键不能为空")
+				return errors.New("status mapping key cannot be empty")
 			}
 			if !isValidAlertStatus(value) {
-				return fmt.Errorf("无效的告警状态：%s（键：%s）", value, key)
+				return fmt.Errorf("invalid alert status: %s (key: %s)", value, key)
 			}
 		}
 	}
 
-	// 验证组件映射
+	// Validate component mappings
 	if len(req.ComponentMappings) != 0 {
 		for component, identifiers := range req.ComponentMappings {
 			if !isValidAlertComponent(component) {
-				return fmt.Errorf("组件'%s'不合法", component)
+				return fmt.Errorf("component '%s' is invalid", component)
 			}
 			if len(identifiers) == 0 {
-				return fmt.Errorf("组件'%s'的标识符列表不能为空", component)
+				return fmt.Errorf("identifier list for component '%s' cannot be empty", component)
 			}
 			for _, identifier := range identifiers {
 				if strings.TrimSpace(identifier) == "" {
-					return fmt.Errorf("组件'%s'的标识符不能为空", component)
+					return fmt.Errorf("identifier for component '%s' cannot be empty", component)
 				}
 			}
 		}
@@ -155,14 +154,14 @@ func (s *BMCTrapParserServiceImp) validateMappings(req *request.BMCTrapParserCre
 func (s *BMCTrapParserServiceImp) Create(req *request.BMCTrapParserCreate) (int, error) {
 	trimmedParserName := strings.TrimSpace(req.ParserName)
 	if trimmedParserName == "" {
-		return http.StatusBadRequest, fmt.Errorf("parserName不能为空")
+		return http.StatusBadRequest, fmt.Errorf("parserName cannot be empty")
 	}
 	exist, err := s.CheckParserNameExist(trimmedParserName, true, 0)
 	if err != nil {
-		return http.StatusInternalServerError, fmt.Errorf("parserName已存在")
+		return http.StatusInternalServerError, fmt.Errorf("parserName already exists")
 	}
 	if exist {
-		return http.StatusBadRequest, fmt.Errorf("parserName已存在")
+		return http.StatusBadRequest, fmt.Errorf("parserName already exists")
 	}
 
 	if err := s.validateRequiredOIDs(req); err != nil {
@@ -177,13 +176,13 @@ func (s *BMCTrapParserServiceImp) Create(req *request.BMCTrapParserCreate) (int,
 		return http.StatusBadRequest, err
 	}
 
-	// 3. 调用Repository保存
+	// Save via Repository
 	err = s.repo.Create(parser)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateParserName) {
-			return http.StatusBadRequest, fmt.Errorf("parserName已存在")
+			return http.StatusBadRequest, fmt.Errorf("parserName already exists")
 		}
-		return http.StatusInternalServerError, fmt.Errorf("保存解析器失败: %v", err)
+		return http.StatusInternalServerError, fmt.Errorf("failed to save parser: %v", err)
 	}
 	return http.StatusCreated, nil
 }
@@ -192,18 +191,18 @@ func (s *BMCTrapParserServiceImp) CheckParserNameExist(vendorName string, cteate
 	return s.repo.IsParserNameExist(vendorName, cteateModel, id)
 }
 
-// Update 更新Trap解析器
+// Update updates a Trap parser
 func (s *BMCTrapParserServiceImp) Update(req *request.BMCTrapParserUpdate) (int, error) {
-	// 检查记录是否存在
+	// Check if record exists
 	parser, err := s.repo.FindByID(req.ID)
 	if err != nil {
-		return http.StatusInternalServerError, fmt.Errorf("获取解析器失败: %v", err)
+		return http.StatusInternalServerError, fmt.Errorf("failed to get parser: %v", err)
 	}
 	if parser == nil {
-		return http.StatusBadRequest, errors.New("解析器不存在")
+		return http.StatusBadRequest, errors.New("parser does not exist")
 	}
 
-	// 验证请求（转换为Create请求进行验证
+	// Validate request (convert to Create request for validation)
 	req.UpdateParserRecord(parser)
 
 	rc := new(request.BMCTrapParserCreate)
@@ -211,14 +210,14 @@ func (s *BMCTrapParserServiceImp) Update(req *request.BMCTrapParserUpdate) (int,
 
 	trimmedParserName := strings.TrimSpace(parser.ParserName)
 	if trimmedParserName == "" {
-		return http.StatusBadRequest, fmt.Errorf("parserName不能为空")
+		return http.StatusBadRequest, fmt.Errorf("parserName cannot be empty")
 	}
 	exist, err := s.CheckParserNameExist(trimmedParserName, true, 0)
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("update failed: %v", err)
 	}
 	if exist {
-		return http.StatusBadRequest, fmt.Errorf("parserName已存在")
+		return http.StatusBadRequest, fmt.Errorf("parserName already exists")
 	}
 	if err := s.validateRequiredOIDs(rc); err != nil {
 		return http.StatusBadRequest, err
@@ -227,64 +226,64 @@ func (s *BMCTrapParserServiceImp) Update(req *request.BMCTrapParserUpdate) (int,
 		return http.StatusBadRequest, err
 	}
 
-	// 更新
+	// Update
 	if err := s.repo.Update(parser); err != nil {
-		return http.StatusInternalServerError, fmt.Errorf("更新失败: %v", err)
+		return http.StatusInternalServerError, fmt.Errorf("update failed: %v", err)
 	}
 
 	return http.StatusOK, nil
 }
 
-// Delete 删除Trap解析器
+// Delete deletes a Trap parser
 func (s *BMCTrapParserServiceImp) Delete(id int64) (int, error) {
-	// 检查记录是否存在
+	// Check if record exists
 	parser, err := s.repo.FindByID(id)
 	if err != nil {
-		return http.StatusInternalServerError, fmt.Errorf("获取解析器失败: %v", err)
+		return http.StatusInternalServerError, fmt.Errorf("failed to get parser: %v", err)
 	}
 	if parser == nil {
-		return http.StatusBadRequest, errors.New("解析器不存在")
+		return http.StatusBadRequest, errors.New("parser does not exist")
 	}
 
-	// 执行软删除
+	// Perform soft delete
 	if err := s.repo.SoftDelete(id); err != nil {
-		return http.StatusInternalServerError, fmt.Errorf("删除Trap解析器失败: %v", err)
+		return http.StatusInternalServerError, fmt.Errorf("failed to delete Trap parser: %v", err)
 	}
 	return http.StatusOK, nil
 }
 
 func (s *BMCTrapParserServiceImp) Activate(id int64) (int, error) {
-	// 检查记录是否存在
+	// Check if record exists
 	parser, err := s.repo.FindByID(id)
 	if err != nil {
-		return http.StatusInternalServerError, fmt.Errorf("获取解析器失败: %v", err)
+		return http.StatusInternalServerError, fmt.Errorf("failed to get parser: %v", err)
 	}
 	if parser == nil {
-		return http.StatusBadRequest, errors.New("解析器不存在")
+		return http.StatusBadRequest, errors.New("parser does not exist")
 	}
 	if parser.IsActive {
-		return http.StatusBadRequest, errors.New("解析器已处于激活状态")
+		return http.StatusBadRequest, errors.New("parser is already active")
 	}
 	if err := s.repo.Activate(id); err != nil {
-		return http.StatusInternalServerError, fmt.Errorf("激活Trap解析器失败: %v", err)
+		return http.StatusInternalServerError, fmt.Errorf("failed to activate Trap parser: %v", err)
 	}
 	return http.StatusOK, nil
 }
 
 func (s *BMCTrapParserServiceImp) Deactivate(id int64) (int, error) {
-	// 检查记录是否存在
+	// Check if record exists
 	parser, err := s.repo.FindByID(id)
 	if err != nil {
-		return http.StatusInternalServerError, fmt.Errorf("获取解析器失败: %v", err)
+		return http.StatusInternalServerError, fmt.Errorf("failed to get parser: %v", err)
 	}
 	if parser == nil {
-		return http.StatusBadRequest, errors.New("解析器不存在")
+		return http.StatusBadRequest, errors.New("parser does not exist")
 	}
 	if !parser.IsActive {
-		return http.StatusBadRequest, errors.New("解析器已处于非激活状态")
+		return http.StatusBadRequest, errors.New("parser is already inactive")
 	}
 	if err := s.repo.Deactivate(id); err != nil {
-		return http.StatusInternalServerError, fmt.Errorf("激活Trap解析器失败: %v", err)
+		return http.StatusInternalServerError, fmt.Errorf("failed to deactivate Trap parser: %v", err)
 	}
 	return http.StatusOK, nil
 }
@@ -293,16 +292,15 @@ func (s *BMCTrapParserServiceImp) List(filter *request.BMCTrapParserFilter) (res
 	var resp response.BMCTrapParserListResult
 	resp, err := s.repo.List(filter)
 	if err != nil {
-		return response.BMCTrapParserListResult{}, http.StatusInternalServerError, fmt.Errorf("获取列表失败: %v", err)
+		return response.BMCTrapParserListResult{}, http.StatusInternalServerError, fmt.Errorf("failed to get list: %v", err)
 	}
 
 	return resp, http.StatusOK, nil
-
 }
 
-// ============ 辅助函数 ============
+// ============ Helper functions ============
 
-// isValidAlertLevel 验证告警级别是否有效
+// isValidAlertLevel validates if alert level is valid
 func isValidAlertLevel(level string) bool {
 	switch models.AlertLevel(level) {
 	case models.AlertLevelCritical,
@@ -315,7 +313,7 @@ func isValidAlertLevel(level string) bool {
 	}
 }
 
-// isValidAlertStatus 验证告警状态是否有效
+// isValidAlertStatus validates if alert status is valid
 func isValidAlertStatus(status string) bool {
 	switch models.TrapStatus(status) {
 	case models.TrapStatusAsserted,
