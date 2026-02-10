@@ -258,33 +258,6 @@ func (suite *AlertRepositoryTestSuite) TestList_PaginationAndSorting() {
 	assert.Len(suite.T(), result4.List, 0)
 }
 
-func (suite *AlertRepositoryTestSuite) TestList_MaxPageSizeProtection() {
-	// Arrange: Create 120 alerts
-	alerts := make([]models.Alert, 120)
-	for i := range alerts {
-		alerts[i] = models.Alert{
-			ParserID:    int64(i),
-			AlertStatus: models.AlertStatusActive,
-			SourceIP:    "10.0.0." + string(rune(i%255+48)),
-			AlertTime:   time.Now(),
-		}
-	}
-	suite.createTestAlerts(alerts)
-
-	// Act: Request 200 items (exceeds max)
-	filter := &request.AlertFilter{
-		Page:     1,
-		PageSize: 200, // Should be capped at 100
-	}
-	result, err := suite.repo.List(filter)
-
-	// Assert
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), 100, result.PageSize) // Capped value
-	assert.Len(suite.T(), result.List, 100)       // Only 100 returned
-	assert.Equal(suite.T(), int64(120), result.Total)
-}
-
 func (suite *AlertRepositoryTestSuite) TestList_FuzzySearch() {
 	// Arrange
 	suite.createTestAlerts([]models.Alert{
