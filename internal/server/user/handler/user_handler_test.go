@@ -541,4 +541,498 @@ func TestRevokePermissions_Success(t *testing.T) {
 	assert.Equal(t, expectedPerms, remainingPerms)
 }
 
+// TestRefreshToken_Success tests successful token refresh
+func TestRefreshToken_Success(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	// Create a test user
+	testUser, err := userService.CreateUser("refreshtest", "testpassword")
+	assert.NoError(t, err)
+	assert.NotNil(t, testUser)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.POST("/refresh", handler.RefreshToken)
+
+	// First, get a refresh token by logging in
+	loginReq := request.LoginRequest{
+		Username: "refreshtest",
+		Password: "testpassword",
+	}
+	loginData, _ := json.Marshal(loginReq)
+	loginResp := httptest.NewRecorder()
+	loginReqObj, _ := http.NewRequest("POST", "/login", bytes.NewBuffer(loginData))
+	loginReqObj.Header.Set("Content-Type", "application/json")
+	
+	loginRouter := gin.Default()
+	loginRouter.POST("/login", handler.Login)
+	loginRouter.ServeHTTP(loginResp, loginReqObj)
+	
+	assert.Equal(t, http.StatusOK, loginResp.Code)
+	
+	var loginSuccessResp response.SuccessResponse
+	err = json.Unmarshal(loginResp.Body.Bytes(), &loginSuccessResp)
+	assert.NoError(t, err)
+	
+	loginRespBytes, err := json.Marshal(loginSuccessResp.Data)
+	assert.NoError(t, err)
+	
+	var loginRespData response.LoginResponse
+	err = json.Unmarshal(loginRespBytes, &loginRespData)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, loginRespData.RefreshToken)
+
+	// Now test refresh token
+	refreshReq := request.RefreshTokenRequest{
+		RefreshToken: loginRespData.RefreshToken,
+	}
+	refreshData, _ := json.Marshal(refreshReq)
+
+	req, _ := http.NewRequest("POST", "/refresh", bytes.NewBuffer(refreshData))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+
+	var successResp response.SuccessResponse
+	err = json.Unmarshal(resp.Body.Bytes(), &successResp)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, successResp.Code)
+	assert.True(t, successResp.Success)
+	assert.Contains(t, successResp.Message, "Token refreshed successfully")
+
+	// Extract new access token from response
+	refreshRespBytes, err := json.Marshal(successResp.Data)
+	assert.NoError(t, err)
+
+	var refreshRespData map[string]string
+	err = json.Unmarshal(refreshRespBytes, &refreshRespData)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, refreshRespData["access_token"])
+}
+
+// TestRefreshToken_InvalidToken tests refresh token with invalid token
+func TestRefreshToken_InvalidToken(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.POST("/refresh", handler.RefreshToken)
+
+	// Test with invalid refresh token
+	refreshReq := request.RefreshTokenRequest{
+		RefreshToken: "invalid.token.here",
+	}
+	refreshData, _ := json.Marshal(refreshReq)
+
+	req, _ := http.NewRequest("POST", "/refresh", bytes.NewBuffer(refreshData))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusUnauthorized, resp.Code)
+
+	var errorResp response.ErrorResponse
+	err := json.Unmarshal(resp.Body.Bytes(), &errorResp)
+	assert.NoError(t, err)
+	assert.Equal(t, 401, errorResp.Code)
+	assert.Contains(t, errorResp.Message, "Invalid refresh token")
+}
+
+// TestLogout_Success tests logout functionality
+func TestLogout_Success(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.POST("/logout", handler.Logout)
+
+	req, _ := http.NewRequest("POST", "/logout", nil)
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+
+	var successResp response.SuccessResponse
+	err := json.Unmarshal(resp.Body.Bytes(), &successResp)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, successResp.Code)
+	assert.True(t, successResp.Success)
+	assert.Contains(t, successResp.Message, "Logout successful")
+}
+
+// TestLogin_InvalidParameters tests login with invalid parameters
+func TestLogin_InvalidParameters(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.POST("/login", handler.Login)
+
+	// Test with invalid JSON
+	req, _ := http.NewRequest("POST", "/login", bytes.NewBuffer([]byte("invalid json")))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+
+	var errorResp response.ErrorResponse
+	err := json.Unmarshal(resp.Body.Bytes(), &errorResp)
+	assert.NoError(t, err)
+	assert.Equal(t, 400, errorResp.Code)
+	assert.Contains(t, errorResp.Message, "Invalid request parameters")
+}
+
+// TestCreateUser_InvalidParameters tests create user with invalid parameters
+func TestCreateUser_InvalidParameters(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("is_admin", true)
+		c.Next()
+	})
+	router.POST("/users/create", handler.CreateUser)
+
+	// Test with invalid JSON
+	req, _ := http.NewRequest("POST", "/users/create", bytes.NewBuffer([]byte("invalid json")))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+
+	var errorResp response.ErrorResponse
+	err := json.Unmarshal(resp.Body.Bytes(), &errorResp)
+	assert.NoError(t, err)
+	assert.Equal(t, 400, errorResp.Code)
+	assert.Contains(t, errorResp.Message, "Invalid request parameters")
+}
+
+// TestCreateUser_EmptyUsername tests create user with empty username
+func TestCreateUser_EmptyUsername(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("is_admin", true)
+		c.Next()
+	})
+	router.POST("/users/create", handler.CreateUser)
+
+	createReq := request.CreateUserRequest{
+		Username: "",
+		Password: "password123",
+	}
+	jsonData, _ := json.Marshal(createReq)
+
+	req, _ := http.NewRequest("POST", "/users/create", bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+}
+
+// TestDeleteUser_InvalidParameters tests delete user with invalid parameters
+func TestDeleteUser_InvalidParameters(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("is_admin", true)
+		c.Next()
+	})
+	router.POST("/users/delete", handler.DeleteUser)
+
+	// Test with invalid JSON
+	req, _ := http.NewRequest("POST", "/users/delete", bytes.NewBuffer([]byte("invalid json")))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+
+	var errorResp response.ErrorResponse
+	err := json.Unmarshal(resp.Body.Bytes(), &errorResp)
+	assert.NoError(t, err)
+	assert.Equal(t, 400, errorResp.Code)
+	assert.Contains(t, errorResp.Message, "Invalid request parameters")
+}
+
+// TestDeleteUser_NonExistentUser tests delete non-existent user
+func TestDeleteUser_NonExistentUser(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("is_admin", true)
+		c.Next()
+	})
+	router.POST("/users/delete", handler.DeleteUser)
+
+	deleteReq := request.DeleteUserRequest{
+		UserID: 999999, // Non-existent user ID
+	}
+	jsonData, _ := json.Marshal(deleteReq)
+
+	req, _ := http.NewRequest("POST", "/users/delete", bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+}
+
+// TestUpdateUserStatus_InvalidParameters tests update user status with invalid parameters
+func TestUpdateUserStatus_InvalidParameters(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("is_admin", true)
+		c.Next()
+	})
+	router.POST("/users/update_status", handler.UpdateUserStatus)
+
+	// Test with invalid JSON
+	req, _ := http.NewRequest("POST", "/users/update_status", bytes.NewBuffer([]byte("invalid json")))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+
+	var errorResp response.ErrorResponse
+	err := json.Unmarshal(resp.Body.Bytes(), &errorResp)
+	assert.NoError(t, err)
+	assert.Equal(t, 400, errorResp.Code)
+	assert.Contains(t, errorResp.Message, "Invalid request parameters")
+}
+
+// TestUpdateUserStatus_NonExistentUser tests update non-existent user status
+func TestUpdateUserStatus_NonExistentUser(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("is_admin", true)
+		c.Next()
+	})
+	router.POST("/users/update_status", handler.UpdateUserStatus)
+
+	updateReq := request.UpdateUserStatusRequest{
+		UserID:   999999, // Non-existent user ID
+		IsActive: false,
+	}
+	jsonData, _ := json.Marshal(updateReq)
+
+	req, _ := http.NewRequest("POST", "/users/update_status", bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+}
+
+// TestGrantPermissions_InvalidParameters tests grant permissions with invalid parameters
+func TestGrantPermissions_InvalidParameters(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("is_admin", true)
+		c.Next()
+	})
+	router.POST("/users/grant_permissions", handler.GrantPermissions)
+
+	// Test with invalid JSON
+	req, _ := http.NewRequest("POST", "/users/grant_permissions", bytes.NewBuffer([]byte("invalid json")))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+
+	var errorResp response.ErrorResponse
+	err := json.Unmarshal(resp.Body.Bytes(), &errorResp)
+	assert.NoError(t, err)
+	assert.Equal(t, 400, errorResp.Code)
+	assert.Contains(t, errorResp.Message, "Invalid request parameters")
+}
+
+// TestGrantPermissions_NonExistentUser tests grant permissions to non-existent user
+func TestGrantPermissions_NonExistentUser(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("is_admin", true)
+		c.Next()
+	})
+	router.POST("/users/grant_permissions", handler.GrantPermissions)
+
+	grantReq := request.GrantPermissionsRequest{
+		UserID: 999999, // Non-existent user ID
+		Permissions: map[string]bool{
+			"test": true,
+		},
+	}
+	jsonData, _ := json.Marshal(grantReq)
+
+	req, _ := http.NewRequest("POST", "/users/grant_permissions", bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+}
+
+// TestRevokePermissions_InvalidParameters tests revoke permissions with invalid parameters
+func TestRevokePermissions_InvalidParameters(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("is_admin", true)
+		c.Next()
+	})
+	router.POST("/users/revoke_permissions", handler.RevokePermissions)
+
+	// Test with invalid JSON
+	req, _ := http.NewRequest("POST", "/users/revoke_permissions", bytes.NewBuffer([]byte("invalid json")))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+
+	var errorResp response.ErrorResponse
+	err := json.Unmarshal(resp.Body.Bytes(), &errorResp)
+	assert.NoError(t, err)
+	assert.Equal(t, 400, errorResp.Code)
+	assert.Contains(t, errorResp.Message, "Invalid request parameters")
+}
+
+// TestRevokePermissions_NonExistentUser tests revoke permissions from non-existent user
+func TestRevokePermissions_NonExistentUser(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("is_admin", true)
+		c.Next()
+	})
+	router.POST("/users/revoke_permissions", handler.RevokePermissions)
+
+	revokeReq := request.RevokePermissionsRequest{
+		UserID:         999999, // Non-existent user ID
+		PermissionKeys: []string{"test"},
+	}
+	jsonData, _ := json.Marshal(revokeReq)
+
+	req, _ := http.NewRequest("POST", "/users/revoke_permissions", bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+}
+
+// TestListUsers_InvalidPage tests list users with invalid page parameter
+func TestListUsers_InvalidPage(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("is_admin", true)
+		c.Next()
+	})
+	router.GET("/users/list", handler.ListUsers)
+
+	// Test with invalid page=-1
+	req, _ := http.NewRequest("GET", "/users/list?page=-1&page_size=10", nil)
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+
+	var errorResp response.ErrorResponse
+	err := json.Unmarshal(resp.Body.Bytes(), &errorResp)
+	assert.NoError(t, err)
+	assert.Equal(t, 400, errorResp.Code)
+	assert.Contains(t, errorResp.Message, "Invalid pagination parameters")
+}
+
+// TestListUsers_ExceedMaxPageSize tests list users with page_size exceeding maximum
+func TestListUsers_ExceedMaxPageSize(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService, _ := setupTest(t)
+
+	handler := NewUserHandler(userService)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("is_admin", true)
+		c.Next()
+	})
+	router.GET("/users/list", handler.ListUsers)
+
+	// Test with page_size=101 (assuming max is 100)
+	req, _ := http.NewRequest("GET", "/users/list?page=1&page_size=101", nil)
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+
+	var errorResp response.ErrorResponse
+	err := json.Unmarshal(resp.Body.Bytes(), &errorResp)
+	assert.NoError(t, err)
+	assert.Equal(t, 400, errorResp.Code)
+	assert.Contains(t, errorResp.Message, "Invalid pagination parameters")
+}
+
 
