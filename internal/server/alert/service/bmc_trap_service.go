@@ -33,7 +33,7 @@ func NewBMCTrapServiceImp(pc *BMCTrapParserCache, repo repository.AlertRepo) *BM
 func (s *BMCTrapServiceImp) Process(tm *models.TrapMessage) (int, error) {
 	p, err := s.pc.FindParser(tm)
 	if err != nil {
-		// 获取解析器失败，走兜底策略
+		// Failed to get parser, use fallback strategy
 		alert := &models.Alert{
 			SourceIP:    tm.SourceIP.String(),
 			SourceType:  tm.SourceType,
@@ -69,7 +69,7 @@ func (s *BMCTrapServiceImp) Process(tm *models.TrapMessage) (int, error) {
 		}
 		res, err := s.repo.List(filter)
 		if err != nil {
-			//TODO 关闭的报文处理失败只需要记日志
+			// TODO: Log failure for closing message processing
 			return http.StatusOK, nil
 		}
 		if res.Total > 0 {
@@ -78,17 +78,17 @@ func (s *BMCTrapServiceImp) Process(tm *models.TrapMessage) (int, error) {
 				alertRecord.AlertStatus = models.AlertStatusCleared
 				err = s.repo.Update(alertRecord)
 				if err != nil {
-					// TODO 告警自动关闭失败,记日志
+					// TODO: Log alert auto-close failure
 				}
 				return http.StatusOK, nil
 			}
 		}
-		//TODO 如果是关闭报文，查出对应的告警，处理告警自动关闭，不管成功与否都要结束执行
+		// TODO: For closing messages, find corresponding alerts and handle auto-close, regardless of success or failure
 		return http.StatusOK, nil
 	}
 
 	alert.AlertStatus = models.AlertStatusActive
-	// 新的告警报文，直接落库
+	// New alert message, save directly to database
 	err = s.repo.Create(alert)
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("fail to create alert, err: %v", err)
@@ -108,7 +108,7 @@ func (s *BMCTrapServiceImp) Update(req request.AlertUpdate) (int, error) {
 	alertRecord, err := s.repo.FindByID(req.ID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// 返回 400 状态码和预期的错误消息
+			// Return 400 status code and expected error message
 			return http.StatusBadRequest, errors.New("alert not found")
 		}
 		return http.StatusInternalServerError, fmt.Errorf("fail to find alert, err: %v", err)
