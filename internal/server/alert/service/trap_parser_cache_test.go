@@ -78,7 +78,7 @@ func TestConvertToParser(t *testing.T) {
 	assert.Equal(t, daoModel.EnableAutoClose, parser.EnableAutoClose)
 	assert.Equal(t, daoModel.EnableContactInterComponentAlerts, parser.EnableContactInterComponentAlerts)
 
-	// 检查 ComponentMappingIndex 的构建
+	// Verify ComponentMappingIndex construction
 	expectedIndex := map[string]string{
 		"processor": "cpu",
 		"cpu_a":     "cpu",
@@ -87,8 +87,8 @@ func TestConvertToParser(t *testing.T) {
 	}
 	assert.Equal(t, expectedIndex, parser.ComponentMappingIndex)
 
-	// 检查 ComponentMappingKeyWordLengthSorted 的排序
-	// 应该是按照长度降序排列
+	// Verify ComponentMappingKeyWordLengthSorted sorting
+	// Should be sorted by length in descending order
 	expectedSorted := []string{"processor", "cpu_a", "rams", "mem"}
 	assert.Equal(t, expectedSorted, parser.ComponentMappingKeyWordLengthSorted)
 }
@@ -151,7 +151,7 @@ func TestBmcTrapParser_Match(t *testing.T) {
 		AlertComponentOID: ".1.3.6.1.4.1.1234.1.4",
 	}
 
-	// 匹配成功的场景
+	// Successful match scenario
 	trapDataWithAllFields := &models.TrapMessage{
 		VariableMap: map[string]string{
 			".1.3.6.1.4.1.1234.1.1": "critical",
@@ -163,13 +163,13 @@ func TestBmcTrapParser_Match(t *testing.T) {
 
 	assert.True(t, parser.Match(trapDataWithAllFields))
 
-	// 匹配失败的场景 - 缺少一个字段
+	// Failed match scenario - missing one field
 	trapDataMissingField := &models.TrapMessage{
 		VariableMap: map[string]string{
 			".1.3.6.1.4.1.1234.1.1": "critical",
 			".1.3.6.1.4.1.1234.1.2": "System temperature critical",
 			".1.3.6.1.4.1.1234.1.3": "2023-08-01T12:00:00Z",
-			// 缺少 AlertComponentOID
+			// Missing AlertComponentOID
 		},
 	}
 
@@ -179,7 +179,7 @@ func TestBmcTrapParser_Match(t *testing.T) {
 func TestParserCache_FindParser(t *testing.T) {
 	repo := getTestAlertRepo()
 
-	// 创建测试数据
+	// Create test data
 	testParser := &models.BMCTrapParser{
 		ParserName: "test-parser",
 		VendorCode: "1234",
@@ -201,10 +201,10 @@ func TestParserCache_FindParser(t *testing.T) {
 	err := repo.Create(testParser)
 	assert.NoError(t, err)
 
-	// 创建ParserCache实例
+	// Create ParserCache instance
 	cache := NewBMCTrapParserCache(repo)
 
-	// 创建匹配的TrapMessage
+	// Create matching TrapMessage
 	trapData := &models.TrapMessage{
 		SourceIP: net.IP{192, 168, 1, 1},
 		VariableMap: map[string]string{
@@ -215,17 +215,17 @@ func TestParserCache_FindParser(t *testing.T) {
 		},
 	}
 
-	// 找到解析器
+	// Find parser
 	foundParser, err := cache.FindParser(trapData)
 	assert.NoError(t, err)
 	assert.NotNil(t, foundParser)
 	assert.Equal(t, "1234", foundParser.VendorCode)
 
-	// 测试找不到解析器的情况
+	// Test scenario where parser is not found
 	invalidTrapData := &models.TrapMessage{
 		SourceIP: net.IP{192, 168, 1, 1},
 		VariableMap: map[string]string{
-			".1.3.6.1.4.1.99999.1.1": "critical", // 不存在的OID
+			".1.3.6.1.4.1.99999.1.1": "critical", // Non-existent OID
 		},
 	}
 
@@ -236,7 +236,7 @@ func TestParserCache_FindParser(t *testing.T) {
 func TestParserCache_InitLoad(t *testing.T) {
 	repo := getTestAlertRepo()
 
-	// 插入测试数据
+	// Insert test data
 	testParser := &models.BMCTrapParser{
 		ParserName: "init-test-parser",
 		VendorCode: "5678",
@@ -258,7 +258,7 @@ func TestParserCache_InitLoad(t *testing.T) {
 	err := repo.Create(testParser)
 	assert.NoError(t, err)
 
-	// 创建ParserCache实例
+	// Create ParserCache instance
 	cache := &BMCTrapParserCache{
 		vendorIndex:       make(map[string][]*bmcTrapParser),
 		allParsers:        make(map[int64]*bmcTrapParser),
@@ -266,10 +266,10 @@ func TestParserCache_InitLoad(t *testing.T) {
 		bmcTrapParserRepo: repo,
 	}
 
-	// 调用initload方法
+	// Call initload method
 	cache.initload()
 
-	// 验证数据已加载
+	// Verify data has been loaded
 	assert.Len(t, cache.allParsers, 1)
 	assert.Contains(t, cache.allParsers, int64(1))
 	assert.Contains(t, cache.vendorIndex, "5678")
@@ -298,13 +298,13 @@ func TestParserCache_CalculateChecksum(t *testing.T) {
 		ID:            1,
 		ParserName:    "parser1",
 		VendorCode:    "vendor1",
-		AlertLevelOID: ".1.1.1.2", // 不同的OID
+		AlertLevelOID: ".1.1.1.2", // Different OID
 	}
 
 	checksum1 := cache.calculateChecksum(parser1)
 	checksum2 := cache.calculateChecksum(parser2)
 	checksum3 := cache.calculateChecksum(parser3)
 
-	assert.Equal(t, checksum1, checksum2)    // 相同配置应该有相同的校验和
-	assert.NotEqual(t, checksum1, checksum3) // 不同配置应该有不同的校验和
+	assert.Equal(t, checksum1, checksum2)    // Same configuration should have same checksum
+	assert.NotEqual(t, checksum1, checksum3) // Different configurations should have different checksums
 }
