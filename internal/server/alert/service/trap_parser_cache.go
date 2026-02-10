@@ -11,10 +11,10 @@ import (
 	"time"
 )
 
-// Parser 解析器接口
+// Parser interface for trap message parsing
 type Parser interface {
 	Parse(trapData *models.TrapMessage) (*models.Alert, error)
-	Match(trapData *models.TrapMessage)
+	Match(trapData *models.TrapMessage) bool
 }
 
 type bmcTrapParser struct {
@@ -23,7 +23,7 @@ type bmcTrapParser struct {
 	VendorCode string
 	VendorName string
 
-	// 核心OID字段
+	// Core OID fields
 	AlertLevelOID     string
 	AlertContentOID   string
 	AlertTimeOID      string
@@ -33,10 +33,10 @@ type bmcTrapParser struct {
 	AlertIndexOID   string
 	AlertStatusOID  string
 
-	EnableContactInterComponentAlerts  bool   // 是否启用联系组件间告警
-	ContactInterComponentIdentifierOID string // 联系组件标识符OID
+	EnableContactInterComponentAlerts  bool   // Whether to enable inter-component alert correlation
+	ContactInterComponentIdentifierOID string // Inter-component identifier OID
 
-	// 映射配置 - 使用JSON序列化到数据库
+	// Mapping configurations - serialized to database as JSON
 	LevelMappings         map[string]models.AlertLevel
 	StatusMappings        map[string]models.TrapStatus
 	EnableProductNameList []string
@@ -47,7 +47,7 @@ type bmcTrapParser struct {
 	ComponentMappingKeyWordLengthSorted []string
 }
 
-// 让 TrapParser 实现 Parser 接口
+// Parse implements the Parser interface
 func (p *bmcTrapParser) Parse(tm *models.TrapMessage) (*models.Alert, error) {
 	alert := &models.Alert{
 		TrapOID:    tm.SnmpTrapOID,
@@ -58,7 +58,7 @@ func (p *bmcTrapParser) Parse(tm *models.TrapMessage) (*models.Alert, error) {
 		RawData:    tm.RawData,
 	}
 
-	// 解析四个告警核心字段字段,核心字段必须解析成功
+	// Parse four core alert fields, which must succeed
 	if err := p.parseLevel(alert, tm); err != nil {
 		return nil, fmt.Errorf("parse bmc alert level failed: %w", err)
 	}
@@ -75,17 +75,17 @@ func (p *bmcTrapParser) Parse(tm *models.TrapMessage) (*models.Alert, error) {
 		return nil, fmt.Errorf("parse bmc alert content failed: %w", err)
 	}
 
-	// 附加功能相关只是锦上添花，解析不出来就放弃
-	// 解析告警状态字段
+	// Additional features are optional, skip if parsing fails
+	// Parse alert status field
 	p.processAutoClose(alert, tm)
-	// 解析联系部件告警字段
+	// Parse inter-component identifier field
 	p.processTheIdentifierOfTheSameComponent(alert, tm)
 
 	return alert, nil
 }
 
 func (p *bmcTrapParser) Match(trapData *models.TrapMessage) bool {
-	// 检查核心Oid是否存在于trap varbinds中
+	// Check if core OIDs exist in trap varbinds
 	if _, exists := trapData.VariableMap[p.AlertLevelOID]; !exists {
 		return false
 	}
@@ -116,7 +116,6 @@ func (p *bmcTrapParser) parseLevel(alert *models.Alert, tm *models.TrapMessage) 
 	if mappedLevel, exists := p.LevelMappings[levelStr]; exists {
 		alert.AlertLevel = mappedLevel
 	} else {
-
 		return fmt.Errorf("unknown level: %s", levelStr)
 	}
 
@@ -227,12 +226,12 @@ func (p *bmcTrapParser) processTheIdentifierOfTheSameComponent(alert *models.Ale
 }
 
 type BMCTrapParserCache struct {
-	// 核心倒排索引
-	vendorIndex map[string][]*bmcTrapParser // vendor_code -> 解析器列表
+	// Core inverted index
+	vendorIndex map[string][]*bmcTrapParser // vendor_code -> parser list
 
-	// 辅助索引
-	allParsers      map[int64]*bmcTrapParser // parser_id -> 解析器
-	parserChecksums map[int64]string         // parser_id -> 配置校验和
+	// Auxiliary indexes
+	allParsers      map[int64]*bmcTrapParser // parser_id -> parser
+	parserChecksums map[int64]string         // parser_id -> config checksum
 
 	bmcTrapParserRepo repository.BMCTrapParserRepository
 }
@@ -252,14 +251,14 @@ func NewBMCTrapParserCache(btpr repository.BMCTrapParserRepository) *BMCTrapPars
 	return cache
 }
 
-// FindParser 使用倒排索引快速查找解析器
+// FindParser uses inverted index to quickly find a matching parser
 func (c *BMCTrapParserCache) FindParser(trap *models.TrapMessage) (*bmcTrapParser, error) {
 	trapVendorCode, err := trap.ParseVendorCode()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse vendor code: %w", err)
 	}
 
-	// 先获取企业码，再从该企业的所有解析器中逐个匹配
+	// Get enterprise code first, then match against all parsers for that vendor
 	parsers := c.getParsersByVendor(trapVendorCode)
 	for _, parser := range parsers {
 		if parser.Match(trap) {
@@ -270,25 +269,25 @@ func (c *BMCTrapParserCache) FindParser(trap *models.TrapMessage) (*bmcTrapParse
 	return nil, fmt.Errorf("failed to find parser")
 }
 
-// Reload 重建倒排索引
+// Reload rebuilds the inverted index
 func (c *BMCTrapParserCache) initload() {
 	parserRecords, err := c.bmcTrapParserRepo.FindAll()
 	if err != nil {
 		panic(fmt.Errorf("failed load bmc trap parser, err:%v", err))
 	}
 
-	// 清空所有索引
+	// Clear all indexes
 	c.vendorIndex = make(map[string][]*bmcTrapParser)
 	c.allParsers = make(map[int64]*bmcTrapParser)
 
 	for i := range parserRecords {
 		pr := parserRecords[i]
 		bmcTrapParserInstance := ConvertToParser(pr)
-		// 计算配置校验和，用于检测变更
+		// Calculate config checksum for change detection
 		checksum := c.calculateChecksum(bmcTrapParserInstance)
 		c.parserChecksums[bmcTrapParserInstance.ID] = checksum
 
-		// 添加到 vendor 索引
+		// Add to vendor index
 		if c.vendorIndex[bmcTrapParserInstance.VendorCode] == nil {
 			c.vendorIndex[bmcTrapParserInstance.VendorCode] = []*bmcTrapParser{}
 		}
@@ -297,13 +296,13 @@ func (c *BMCTrapParserCache) initload() {
 	}
 }
 
-// calculateChecksum 计算解析器配置的校验和
+// calculateChecksum calculates the checksum of parser configuration
 func (c *BMCTrapParserCache) calculateChecksum(parser *bmcTrapParser) string {
 	bytes, _ := json.Marshal(parser)
 	return fmt.Sprintf("%x", md5.Sum(bytes))
 }
 
-// GetParsersByVendor 获取指定厂商的所有解析器
+// GetParsersByVendor gets all parsers for a specific vendor
 func (c *BMCTrapParserCache) getParsersByVendor(vendorCode string) []*bmcTrapParser {
 	if parsers, exists := c.vendorIndex[vendorCode]; exists {
 		return parsers
@@ -311,7 +310,7 @@ func (c *BMCTrapParserCache) getParsersByVendor(vendorCode string) []*bmcTrapPar
 	return []*bmcTrapParser{}
 }
 
-// autoReload 自动重新加载
+// autoReload automatically reloads parsers periodically
 func (c *BMCTrapParserCache) autoReload() {
 	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
@@ -328,7 +327,7 @@ func (c *BMCTrapParserCache) autoReload() {
 			checksum := c.calculateChecksum(parserInstance)
 			parserIDSet[parserInstance.ID] = true
 			if checksum != c.parserChecksums[parser.ID] {
-				// 配置有变化
+				// Configuration has changed
 				c.updateParser(parser.ID, parser, checksum)
 			}
 		}
@@ -336,7 +335,7 @@ func (c *BMCTrapParserCache) autoReload() {
 		for oldParserID, oldParser := range c.allParsers {
 			_, exists := parserIDSet[oldParserID]
 			if !exists {
-				// 该解析器已被软删除
+				// This parser has been soft-deleted
 				c.removeFromVendorIndex(oldParser)
 				delete(c.parserChecksums, oldParserID)
 				delete(c.allParsers, oldParserID)
@@ -348,16 +347,16 @@ func (c *BMCTrapParserCache) autoReload() {
 func (c *BMCTrapParserCache) updateParser(parserID int64, parser *models.BMCTrapParser, newChecksum string) {
 	parserInstance := ConvertToParser(parser)
 
-	// 从旧的vendor索引中移除
+	// Remove from old vendor index
 	oldParser, exists := c.allParsers[parserID]
 	if exists {
 		c.removeFromVendorIndex(oldParser)
 	}
 
-	// 更新校验和
+	// Update checksum
 	c.parserChecksums[parserID] = newChecksum
 
-	// 添加到新的vendor索引
+	// Add to new vendor index
 	if c.vendorIndex[parserInstance.VendorCode] == nil {
 		c.vendorIndex[parserInstance.VendorCode] = []*bmcTrapParser{}
 	}
@@ -369,14 +368,14 @@ func (c *BMCTrapParserCache) removeFromVendorIndex(parser *bmcTrapParser) {
 	parsers := c.vendorIndex[parser.VendorCode]
 	for i, p := range parsers {
 		if p.ID == parser.ID {
-			// 从切片中移除元素
+			// Remove element from slice
 			c.vendorIndex[parser.VendorCode] = append(parsers[:i], parsers[i+1:]...)
 			break
 		}
 	}
 }
 
-// 将DAO Model转换为解析器实例
+// ConvertToParser converts DAO model to parser instance
 func ConvertToParser(daoModel *models.BMCTrapParser) *bmcTrapParser {
 	if daoModel == nil {
 		return nil
