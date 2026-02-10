@@ -436,7 +436,7 @@ func TestBMCTrapParserHandler_List(t *testing.T) {
 		assert.Equal(t, http.StatusCreated, w.Code)
 	}
 
-	// 测试用例 1: 成功获取列表
+	// Test case 1: Successful list retrieval
 	t.Run("Successful List Retrieval", func(t *testing.T) {
 		filter := request.BMCTrapParserFilter{
 			Page:     1,
@@ -452,19 +452,19 @@ func TestBMCTrapParserHandler_List(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.List(c)
 
-		// 断言
+		// Assertion
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Body.String(), "List retrieved successfully")
 	})
 
-	// 测试用例 2: 列表查询失败 - 使用无效的过滤条件
+	// Test case 2: List query failed - using invalid filter conditions
 	t.Run("List Query Failed", func(t *testing.T) {
-		// 准备测试数据
+		// Prepare test data
 		filter := request.BMCTrapParserFilter{
-			Page:     -1, // 无效页码
+			Page:     -1, // Invalid page number
 			PageSize: 10,
 		}
 
@@ -477,17 +477,17 @@ func TestBMCTrapParserHandler_List(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.List(c)
 
-		// 断言
-		// 根据实际实现，这可能会成功或失败，取决于如何处理无效页码
-		assert.NotEqual(t, http.StatusInternalServerError, w.Code) // 假设不会导致内部服务器错误
+		// Assertion
+		// Depending on the actual implementation, this might succeed or fail based on how invalid page numbers are handled
+		assert.NotEqual(t, http.StatusInternalServerError, w.Code) // Assuming it won't cause an internal server error
 	})
 
-	// 测试用例 3: 无效的请求参数
+	// Test case 3: Invalid request parameters
 	t.Run("Invalid Request Parameters", func(t *testing.T) {
-		// 创建错误的请求数据
+		// Create invalid request data
 		invalidJSON := []byte(`{"invalid": }`)
 
 		req, _ := http.NewRequest(http.MethodPost, "/list", bytes.NewBuffer(invalidJSON))
@@ -497,19 +497,19 @@ func TestBMCTrapParserHandler_List(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.List(c)
 
-		// 断言
+		// Assertion
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "Invalid request parameters")
 	})
 
-	// 测试用例 4: 零值请求参数
+	// Test case 4: Zero-value request parameters
 	t.Run("Zero Request Parameters", func(t *testing.T) {
 		filter := request.BMCTrapParserFilter{
 			Page:     1,
-			PageSize: 0, // 无效页大小
+			PageSize: 0, // Invalid page size
 		}
 
 		jsonData, _ := json.Marshal(filter)
@@ -521,19 +521,19 @@ func TestBMCTrapParserHandler_List(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.List(c)
 
-		// 断言
+		// Assertion
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "Invalid request parameters")
 	})
 
-	// 测试用例 5: 超出范围的 PageSize
+	// Test case 5: PageSize exceeds maximum limit
 	t.Run("PageSize Exceeds Maximum", func(t *testing.T) {
 		filter := request.BMCTrapParserFilter{
 			Page:     1,
-			PageSize: 101, // 超过最大值100
+			PageSize: 101, // Exceeds maximum value of 100
 		}
 
 		jsonData, _ := json.Marshal(filter)
@@ -545,20 +545,20 @@ func TestBMCTrapParserHandler_List(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.List(c)
 
-		// 断言
+		// Assertion
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "Invalid request parameters")
 	})
 
-	// 测试用例 6: 空过滤条件（所有指针字段为nil）
+	// Test case 6: Empty filter conditions (all pointer fields are nil)
 	t.Run("Empty Filter Conditions", func(t *testing.T) {
 		filter := request.BMCTrapParserFilter{
 			Page:     1,
 			PageSize: 10,
-			// 所有可选过滤字段都为nil
+			// All optional filter fields are nil
 		}
 
 		jsonData, _ := json.Marshal(filter)
@@ -570,14 +570,14 @@ func TestBMCTrapParserHandler_List(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.List(c)
 
-		// 断言
+		// Assertion
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Body.String(), "List retrieved successfully")
 		
-		// 验证返回的数据结构
+		// Verify returned data structure
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)

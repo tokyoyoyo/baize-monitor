@@ -39,7 +39,7 @@ func (r *AlertRepoImp) List(filter *request.AlertFilter) (response.AlertListResu
 
 	db := r.db.Model(&models.Alert{})
 
-	// 1. 动态构建查询条件 (保持不变)
+	// 1. Dynamically build query conditions (unchanged)
 	if filter.ParserID != nil {
 		db = db.Where("parser_id = ?", *filter.ParserID)
 	}
@@ -68,7 +68,7 @@ func (r *AlertRepoImp) List(filter *request.AlertFilter) (response.AlertListResu
 		db = db.Where("content LIKE ?", "%"+*filter.Content+"%")
 	}
 
-	// 时间范围处理
+	// Time range handling
 	if filter.AlertTimeRangeStart != nil {
 		db = db.Where("alert_time >= ?", filter.AlertTimeRangeStart)
 	}
@@ -76,22 +76,22 @@ func (r *AlertRepoImp) List(filter *request.AlertFilter) (response.AlertListResu
 		db = db.Where("alert_time <= ?", filter.AlertTimeRangeEnd)
 	}
 
-	// 2. 获取总数 (如果不需要总数展示，可移除此段以提升性能)
+	// 2. Get total count (this section can be removed if total count display is not needed to improve performance)
 	if err := db.Count(&total).Error; err != nil {
 		return response.AlertListResult{}, err
 	}
 
-	// 3. 分页与排序
+	// 3. Pagination and sorting
 	page := filter.Page
 	pageSize := filter.PageSize
 	offset := (page - 1) * pageSize
 
-	// 4. 查询数据
+	// 4. Query data
 	if err := db.Limit(pageSize).Offset(offset).Order("created_at DESC").Find(&alerts).Error; err != nil {
 		return response.AlertListResult{}, err
 	}
 
-	// 5. 构造返回结果
+	// 5. Construct return result
 	result := response.AlertListResult{
 		List:     alerts,
 		Total:    total,
@@ -99,7 +99,7 @@ func (r *AlertRepoImp) List(filter *request.AlertFilter) (response.AlertListResu
 		PageSize: pageSize,
 	}
 
-	// 只返回结果和错误，不再返回 int total
+	// Return only the result and error, no longer return int total
 	return result, nil
 }
 

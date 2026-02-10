@@ -85,9 +85,9 @@ func TestBMCTrapHandlerImpl_ReceiveTrap(t *testing.T) {
 	service := setupTest(t)
 	handler := &BMCTrapHandlerImpl{s: service}
 
-	// 测试用例 1: 有效的 BMC Trap 请求
+	// Test case 1: Valid BMC Trap request
 	t.Run("Valid BMC Trap Request", func(t *testing.T) {
-		// 准备测试数据
+		// Prepare test data
 		trapMessages := []models.TrapMessage{
 			{
 				SourceType: models.TrapSourceTypeBMC,
@@ -121,27 +121,27 @@ func TestBMCTrapHandlerImpl_ReceiveTrap(t *testing.T) {
 		for _, trapMessage := range trapMessages {
 			jsonData, _ := json.Marshal(trapMessage)
 
-			// 创建请求和响应
+			// Create request and response
 			req, _ := http.NewRequest(http.MethodPost, "/trap", bytes.NewBuffer(jsonData))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 
-			// 创建 Gin 上下文
+			// Create Gin context
 			c, _ := gin.CreateTestContext(w)
 			c.Request = req
 
-			// 执行
+			// Execute
 			handler.ReceiveTrap(c)
 
-			// 断言
+			// Assertion
 			assert.Equal(t, http.StatusOK, w.Code)
 			assert.Contains(t, w.Body.String(), "success")
 		}
 	})
 
-	// 测试用例 2: 无效的请求参数
+	// Test case 2: Invalid request parameters
 	t.Run("Invalid Request Parameters", func(t *testing.T) {
-		// 创建错误的请求数据
+		// Create invalid request data
 		invalidJSON := []byte(`{"invalid": }`)
 
 		req, _ := http.NewRequest(http.MethodPost, "/trap", bytes.NewBuffer(invalidJSON))
@@ -151,19 +151,19 @@ func TestBMCTrapHandlerImpl_ReceiveTrap(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.ReceiveTrap(c)
 
-		// 断言
+		// Assertion
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "Invalid request parameters")
 	})
 
-	// 测试用例 3: 非 BMC 类型的请求
+	// Test case 3: Non-BMC type request
 	t.Run("Non-BMC Source Type", func(t *testing.T) {
-		// 准备测试数据
+		// Prepare test data
 		trapMessage := models.TrapMessage{
-			SourceType: "OTHER", // 不是 BMC 类型
+			SourceType: "OTHER", // Not BMC type
 		}
 
 		jsonData, _ := json.Marshal(trapMessage)
@@ -175,21 +175,21 @@ func TestBMCTrapHandlerImpl_ReceiveTrap(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.ReceiveTrap(c)
 
-		// 断言
+		// Assertion
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "only BMC trap supported")
 	})
 
-	// 测试用例 4: 服务处理失败 - 由于缺少必要的OID值，解析会失败
+	// Test case 4: Service processing failure - parsing will fail due to missing required OID values
 	t.Run("Service Processing Failed", func(t *testing.T) {
-		// 准备测试数据 - 缺少必要的OID值
+		// Prepare test data - missing required OID values
 		trapMessage := models.TrapMessage{
 			SourceType: models.TrapSourceTypeBMC,
 			VariableMap: map[string]string{
-				"1.3.6.1.2.1.1.1.0": "Test Device", // 不是我们配置的OID
+				"1.3.6.1.2.1.1.1.0": "Test Device", // Not our configured OID
 			},
 		}
 
@@ -202,10 +202,10 @@ func TestBMCTrapHandlerImpl_ReceiveTrap(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.ReceiveTrap(c)
 
-		// 断言 - 这种情况下，如果没有匹配的parser，也能兜底处理
+		// Assertion - in this case, even without a matching parser, it can still be handled as a fallback
 		assert.Equal(t, http.StatusOK, w.Code)
 	})
 }
@@ -213,11 +213,11 @@ func TestBMCTrapHandlerImpl_ReceiveTrap(t *testing.T) {
 func TestBMCTrapHandlerImpl_List(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	// 创建真实服务
+	// Create real service
 	service := setupTest(t)
 	handler := &BMCTrapHandlerImpl{s: service}
 
-	// 使用循环创建多个测试告警数据
+	// Create multiple test alert data using loop
 	trapMessages := []models.TrapMessage{
 		{
 			SourceType: models.TrapSourceTypeBMC,
@@ -251,24 +251,24 @@ func TestBMCTrapHandlerImpl_List(t *testing.T) {
 	for _, trapMessage := range trapMessages {
 		jsonData, _ := json.Marshal(trapMessage)
 
-		// 创建请求和响应
+		// Create request and response
 		req, _ := http.NewRequest(http.MethodPost, "/trap", bytes.NewBuffer(jsonData))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
-		// 创建 Gin 上下文
+		// Create Gin context
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.ReceiveTrap(c)
 
-		// 断言
+		// Assertion
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Body.String(), "success")
 	}
 
-	// 测试用例 1: 成功获取列表
+	// Test case 1: Successfully retrieve list
 	t.Run("Successful List Retrieval", func(t *testing.T) {
 
 		filter := request.AlertFilter{
@@ -285,19 +285,19 @@ func TestBMCTrapHandlerImpl_List(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.List(c)
 
-		// 断言
+		// Assertion
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Body.String(), "List retrieved successfully")
 	})
 
-	// 测试用例 2: 列表查询失败 - 使用无效的过滤条件
+	// Test case 2: List query failed - using invalid filter conditions
 	t.Run("List Query Failed", func(t *testing.T) {
-		// 准备测试数据
+		// Prepare test data
 		filter := request.AlertFilter{
-			Page:     -1, // 无效页码
+			Page:     -1, // Invalid page number
 			PageSize: 10,
 		}
 
@@ -310,17 +310,17 @@ func TestBMCTrapHandlerImpl_List(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.List(c)
 
-		// 断言
-		// 根据实际实现，这可能会成功或失败，取决于如何处理无效页码
-		assert.NotEqual(t, http.StatusInternalServerError, w.Code) // 假设不会导致内部服务器错误
+		// Assertion
+		// Depending on the actual implementation, this might succeed or fail based on how invalid page numbers are handled
+		assert.NotEqual(t, http.StatusInternalServerError, w.Code) // Assuming it won't cause an internal server error
 	})
 
-	// 测试用例 3: 无效的请求参数
+	// Test case 3: Invalid request parameters
 	t.Run("Invalid Request Parameters", func(t *testing.T) {
-		// 创建错误的请求数据
+		// Create invalid request data
 		invalidJSON := []byte(`{"invalid": }`)
 
 		req, _ := http.NewRequest(http.MethodPost, "/list", bytes.NewBuffer(invalidJSON))
@@ -330,18 +330,18 @@ func TestBMCTrapHandlerImpl_List(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.List(c)
 
-		// 断言
+		// Assertion
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "Invalid request parameters")
 	})
 
-	// 测试用例 4: 零值请求参数
+	// Test case 4: Zero-value request parameters
 	t.Run("zero Request Parameters", func(t *testing.T) {
 		filter := request.AlertFilter{
-			Page:     1, // 无效页码
+			Page:     1, // Invalid page number
 			PageSize: 0,
 		}
 
@@ -354,10 +354,10 @@ func TestBMCTrapHandlerImpl_List(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.List(c)
 
-		// 断言
+		// Assertion
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "Invalid request parameters")
 	})
@@ -366,11 +366,11 @@ func TestBMCTrapHandlerImpl_List(t *testing.T) {
 func TestBMCTrapHandlerImpl_Update(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	// 创建真实服务
+	// Create real service
 	service := setupTest(t)
 	handler := &BMCTrapHandlerImpl{s: service}
 
-	// 测试用例 1: 成功更新
+	// Test case 1: Successful update
 	t.Run("Successful Update", func(t *testing.T) {
 
 		trapMessages := []models.TrapMessage{
@@ -406,24 +406,24 @@ func TestBMCTrapHandlerImpl_Update(t *testing.T) {
 		for _, trapMessage := range trapMessages {
 			jsonData, _ := json.Marshal(trapMessage)
 
-			// 创建请求和响应
+			// Create request and response
 			req, _ := http.NewRequest(http.MethodPost, "/trap", bytes.NewBuffer(jsonData))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 
-			// 创建 Gin 上下文
+			// Create Gin context
 			c, _ := gin.CreateTestContext(w)
 			c.Request = req
 
-			// 执行
+			// Execute
 			handler.ReceiveTrap(c)
 
-			// 断言
+			// Assertion
 			assert.Equal(t, http.StatusOK, w.Code)
 			assert.Contains(t, w.Body.String(), "success")
 		}
 
-		// 准备测试数据
+		// Prepare test data
 		updateReq := request.AlertUpdate{
 			ID:     int64(1),
 			Status: models.AlertStatusCleared,
@@ -438,19 +438,19 @@ func TestBMCTrapHandlerImpl_Update(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.Update(c)
 
-		// 断言
+		// Assertion
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Body.String(), "Update successful")
 	})
 
-	// 测试用例 2: 尝试更新不存在的告警
+	// Test case 2: Attempt to update non-existent alert
 	t.Run("Update Non-existent Alert", func(t *testing.T) {
-		// 准备测试数据
+		// Prepare test data
 		updateReq := request.AlertUpdate{
-			ID:     99999, // 不存在的ID
+			ID:     99999, // Non-existent ID
 			Status: models.AlertStatusCleared,
 		}
 
@@ -463,17 +463,17 @@ func TestBMCTrapHandlerImpl_Update(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.Update(c)
 
-		// 断言
-		// 实际实现可能返回不同状态码，这里假设会返回404或类似错误
-		// 如果实际实现返回200但带有错误信息，也应验证响应内容
+		// Assertion
+		// The actual implementation may return different status codes; here we assume it would return 404 or similar error
+		// If the actual implementation returns 200 with an error message, the response content should also be verified
 	})
 
-	// 测试用例 3: 无效的请求参数
+	// Test case 3: Invalid request parameters
 	t.Run("Invalid Request Parameters", func(t *testing.T) {
-		// 创建错误的请求数据
+		// Create invalid request data
 		invalidJSON := []byte(`{"invalid": }`)
 
 		req, _ := http.NewRequest(http.MethodPut, "/update", bytes.NewBuffer(invalidJSON))
@@ -483,10 +483,10 @@ func TestBMCTrapHandlerImpl_Update(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = req
 
-		// 执行
+		// Execute
 		handler.Update(c)
 
-		// 断言
+		// Assertion
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "Invalid request parameters")
 	})
