@@ -9,13 +9,18 @@ import (
 	"baize-monitor/internal/server/alert/repository"
 	"baize-monitor/internal/server/alert/service"
 	"baize-monitor/internal/server/http/routes"
+
+	user_handler "baize-monitor/internal/server/user/handler"
+	user_service "baize-monitor/internal/server/user/service"
+
 	snmp "baize-monitor/internal/server/snmp"
 	"baize-monitor/pkg/config"
+	"baize-monitor/pkg/models"
 	pkg_snmp "baize-monitor/pkg/snmp"
-	storage "baize-monitor/pkg/storage"
-	postgres "baize-monitor/pkg/storage/postgres"
+	"baize-monitor/pkg/storage"
 
 	"github.com/google/wire"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func InitializeServer(serverConfigPath string) (*server.BaiZeServer, error) {
@@ -26,7 +31,7 @@ func InitializeServer(serverConfigPath string) (*server.BaiZeServer, error) {
 		ProvideBMCParserRepository,
 		ProvideBMCParserService,
 		ProvideBMCParserHandler,
-		ProvideBMCParserRouter,
+		ProvideAdminRouter,
 		ProvideAdminServer,
 
 		ProviderAlterRepository,
@@ -40,6 +45,9 @@ func InitializeServer(serverConfigPath string) (*server.BaiZeServer, error) {
 		ProvideResponseManager,
 		ProvideSNMPServer,
 
+		ProvideUserService,
+		ProvideUserHandler,
+
 		ProviderBaizieServer,
 	)
 	return nil, nil
@@ -51,12 +59,12 @@ func ProvideConfig(serverConfigPath string) (*config.ServerConfig, error) {
 }
 
 // ProvideDatabase 数据库
-func ProvideDatabase(cfg *config.ServerConfig) (*postgres.Client, error) {
-	return postgres.NewClient(cfg.PostGresConfig)
+func ProvideDatabase(cfg *config.ServerConfig) (*storage.Client, error) {
+	return storage.NewClient(cfg.PostGresConfig)
 }
 
 // ProvideBMCParserRepository BMC Repository
-func ProvideBMCParserRepository(db *postgres.Client) repository.BMCTrapParserRepository {
+func ProvideBMCParserRepository(db *storage.Client) repository.BMCTrapParserRepository {
 	return repository.NewBMCTrapParserRepository(db.DB)
 }
 
@@ -70,15 +78,15 @@ func ProvideBMCParserHandler(s service.BMCTrapParserService) handler.BMCTrapPars
 	return handler.NewBMCTrapParserHandler(s)
 }
 
-func ProvideBMCParserRouter(h handler.BMCTrapParserHandler) routes.AdminRouter {
-	return routes.NewAdminRouter(h)
+func ProvideAdminRouter(h handler.BMCTrapParserHandler, uh *user_handler.UserHandler) routes.AdminRouter {
+	return routes.NewAdminRouter(h, uh)
 }
 
 func ProvideAdminServer(cfg *config.ServerConfig, r routes.AdminRouter) *server.AdminServer {
 	return server.NewAdminServer(cfg, r)
 }
 
-func ProviderAlterRepository(db *postgres.Client) repository.AlertRepo {
+func ProviderAlterRepository(db *storage.Client) repository.AlertRepo {
 	return repository.NewAlertRepoImp(db.DB)
 }
 
@@ -104,8 +112,8 @@ func ProvideAlertService(cfg *config.ServerConfig, r routes.AlertRouter) (*serve
 	return server.NewAlertServer(cfg, r)
 }
 
-func ProviderDistributedLocker(cfg *config.ServerConfig) (storage.DistributedLockerInterface, error) {
-	return storage.NewRedisDistributedLocker(cfg.RedisConfig)
+func ProviderDistributedLocker(db *storage.Client) (storage.DistributedLockerInterface, error) {
+	return storage.NewPGTableDistributedLocker(db.DB)
 }
 
 func ProvideResponseManager(cfg *config.ServerConfig) pkg_snmp.ResponseManagerInterface {
@@ -117,6 +125,31 @@ func ProvideSNMPServer(cfg *config.ServerConfig,
 	responseMgr pkg_snmp.ResponseManagerInterface,
 ) (*snmp.SNMPServer, error) {
 	return snmp.NewSNMPServer(cfg, locker, responseMgr)
+}
+
+func ProvideUserService(db *storage.Client) (user_service.UserService, error) {
+	// write the default admin account during initialization.
+
+	var count int64
+	db.DB.Model(&models.User{}).Where("is_admin = ?", true).Count(&count)
+	if count == 0 {
+		hashed, _ := bcrypt.GenerateFromPassword([]byte("Bai_Ze_init_p@ss"), bcrypt.DefaultCost)
+		admin := &models.User{
+			Username:     "admin",
+			PasswordHash: string(hashed),
+			IsAdmin:      true,
+			IsActive:     true,
+			Permissions:  map[string]bool{"*": true},
+			// admin has all permissions and does not need to be displayed, changes are not allowed
+		}
+		return nil, db.DB.Create(admin).Error
+	}
+
+	return user_service.NewUserService(db.DB), nil
+}
+
+func ProvideUserHandler(userService user_service.UserService) *user_handler.UserHandler {
+	return user_handler.NewUserHandler(userService)
 }
 
 func ProviderBaizieServer(

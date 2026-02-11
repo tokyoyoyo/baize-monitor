@@ -13,10 +13,14 @@ import (
 	"baize-monitor/internal/server/alert/service"
 	"baize-monitor/internal/server/http/routes"
 	snmp2 "baize-monitor/internal/server/snmp"
+	handler2 "baize-monitor/internal/server/user/handler"
+	service2 "baize-monitor/internal/server/user/service"
 	"baize-monitor/pkg/config"
+	"baize-monitor/pkg/models"
 	"baize-monitor/pkg/snmp"
-	storage2 "baize-monitor/pkg/storage"
-	"baize-monitor/pkg/storage/postgres"
+	"baize-monitor/pkg/storage"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Injectors from provider.go:
@@ -33,7 +37,12 @@ func InitializeServer(serverConfigPath string) (*server.BaiZeServer, error) {
 	bmcTrapParserRepository := ProvideBMCParserRepository(client)
 	bmcTrapParserService := ProvideBMCParserService(bmcTrapParserRepository)
 	bmcTrapParserHandler := ProvideBMCParserHandler(bmcTrapParserService)
-	adminRouter := ProvideBMCParserRouter(bmcTrapParserHandler)
+	userService, err := ProvideUserService(client)
+	if err != nil {
+		return nil, err
+	}
+	userHandler := ProvideUserHandler(userService)
+	adminRouter := ProvideAdminRouter(bmcTrapParserHandler, userHandler)
 	adminServer := ProvideAdminServer(serverConfig, adminRouter)
 	bmcTrapParserCache := ProviderBMCTrapParserCache(bmcTrapParserRepository)
 	alertRepo := ProviderAlterRepository(client)
@@ -44,7 +53,7 @@ func InitializeServer(serverConfigPath string) (*server.BaiZeServer, error) {
 	if err != nil {
 		return nil, err
 	}
-	distributedLockerInterface, err := ProviderDistributedLocker(serverConfig)
+	distributedLockerInterface, err := ProviderDistributedLocker(client)
 	if err != nil {
 		return nil, err
 	}
@@ -84,8 +93,8 @@ func ProvideBMCParserHandler(s service.BMCTrapParserService) handler.BMCTrapPars
 	return handler.NewBMCTrapParserHandler(s)
 }
 
-func ProvideBMCParserRouter(h handler.BMCTrapParserHandler) routes.AdminRouter {
-	return routes.NewAdminRouter(h)
+func ProvideAdminRouter(h handler.BMCTrapParserHandler, uh *handler2.UserHandler) routes.AdminRouter {
+	return routes.NewAdminRouter(h, uh)
 }
 
 func ProvideAdminServer(cfg *config.ServerConfig, r routes.AdminRouter) *server.AdminServer {
@@ -118,8 +127,8 @@ func ProvideAlertService(cfg *config.ServerConfig, r routes.AlertRouter) (*serve
 	return server.NewAlertServer(cfg, r)
 }
 
-func ProviderDistributedLocker(cfg *config.ServerConfig) (storage2.DistributedLockerInterface, error) {
-	return storage2.NewRedisDistributedLocker(cfg.RedisConfig)
+func ProviderDistributedLocker(db *storage.Client) (storage.DistributedLockerInterface, error) {
+	return storage.NewPGTableDistributedLocker(db.DB)
 }
 
 func ProvideResponseManager(cfg *config.ServerConfig) snmp.ResponseManagerInterface {
@@ -127,10 +136,33 @@ func ProvideResponseManager(cfg *config.ServerConfig) snmp.ResponseManagerInterf
 }
 
 func ProvideSNMPServer(cfg *config.ServerConfig,
-	locker storage2.DistributedLockerInterface,
+	locker storage.DistributedLockerInterface,
 	responseMgr snmp.ResponseManagerInterface,
 ) (*snmp2.SNMPServer, error) {
 	return snmp2.NewSNMPServer(cfg, locker, responseMgr)
+}
+
+func ProvideUserService(db *storage.Client) (service2.UserService, error) {
+
+	var count int64
+	db.DB.Model(&models.User{}).Where("is_admin = ?", true).Count(&count)
+	if count == 0 {
+		hashed, _ := bcrypt.GenerateFromPassword([]byte("Bai_Ze_init_p@ss"), bcrypt.DefaultCost)
+		admin := &models.User{
+			Username:     "admin",
+			PasswordHash: string(hashed),
+			IsAdmin:      true,
+			IsActive:     true,
+			Permissions:  map[string]bool{"*": true},
+		}
+		return nil, db.DB.Create(admin).Error
+	}
+
+	return service2.NewUserService(db.DB), nil
+}
+
+func ProvideUserHandler(userService service2.UserService) *handler2.UserHandler {
+	return handler2.NewUserHandler(userService)
 }
 
 func ProviderBaizieServer(config2 *config.ServerConfig,

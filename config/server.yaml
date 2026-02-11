@@ -1,9 +1,9 @@
 server_config:
     gin_debug: false
     admin_server_config:
-        port: 8080
+        port: 9988
     alert_server_config:
-        port: 8081
+        port: 9898
     post_gres_config:
         host: localhost
         port: 5432

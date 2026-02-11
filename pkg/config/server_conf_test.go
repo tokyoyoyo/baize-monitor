@@ -15,8 +15,8 @@ const configPath = "../../config/server.yaml"
 
 var defaultCfg = &ServerConfig{
 	GinDebug:          false,
-	AdminServerConfig: &AdminServerConfig{Port: 8080},
-	AlertServerConfig: &AlertServerConfig{Port: 8081},
+	AdminServerConfig: &AdminServerConfig{Port: 9988},
+	AlertServerConfig: &AlertServerConfig{Port: 9898},
 	PostGresConfig: &PostGresConfig{
 		Host:      "localhost",
 		Port:      5432,
