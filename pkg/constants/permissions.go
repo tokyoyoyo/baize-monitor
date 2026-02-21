@@ -18,7 +18,7 @@ const (
 	// 用户权限管理模块
 	PermissionUserAuthPass = "auth"
 
-	PermissionHealthCheckPass = "helth_check"
+	PermissionHealthCheckPass = "health_check"
 )
 
 // ModuleRoutes 功能模块对应的路由映射

@@ -113,7 +113,7 @@ func matchRoute(pattern, pathStr string) bool {
 // shouldSkipAuth 检查是否应该跳过认证
 func shouldSkipAuth(pathStr string) bool {
 	skipPatterns := []string{
-		fmt.Sprintf("%s/%s", constants.APIV1Prefix, constants.PermissionHealthCheckPass),
+		fmt.Sprintf("/%s", constants.PermissionHealthCheckPass),
 		fmt.Sprintf("%s/%s/*", constants.APIV1Prefix, constants.PermissionAlertPass),
 		fmt.Sprintf("%s/%s/*", constants.APIV1Prefix, constants.PermissionUserAuthPass),
 	}
