@@ -28,7 +28,12 @@ func NewAdminServer(cfg *config.ServerConfig, r routes.AdminRouter) *AdminServer
 }
 
 func (s *AdminServer) Start() error {
-	return s.s.ListenAndServe()
+	go func() {
+		if err := s.s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Printf("Admin server error: %v\n", err)
+		}
+	}()
+	return nil
 }
 
 func (s *AdminServer) Shutdown(ctx context.Context) error {

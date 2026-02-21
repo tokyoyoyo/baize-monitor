@@ -33,7 +33,12 @@ func NewAlertServer(cfg *config.ServerConfig, r routes.AlertRouter) (*AlertServe
 }
 
 func (s *AlertServer) Start() error {
-	return s.s.ListenAndServe()
+	go func() {
+		if err := s.s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Printf("Alert server error: %v\n", err)
+		}
+	}()
+	return nil
 }
 
 func (s *AlertServer) Shutdown(ctx context.Context) error {

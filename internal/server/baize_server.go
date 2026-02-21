@@ -5,6 +5,7 @@ import (
 	"baize-monitor/pkg/config"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,7 +21,6 @@ func NewBaiZeServer(cfg *config.ServerConfig,
 	alertS *AlertServer,
 	snmpS *snmp.SNMPServer,
 ) *BaiZeServer {
-	// 设置Gin模式
 	if cfg.GinDebug {
 		gin.SetMode(gin.DebugMode)
 	} else {
@@ -37,39 +37,42 @@ func NewBaiZeServer(cfg *config.ServerConfig,
 }
 
 func (s *BaiZeServer) Start() error {
-	err := s.adminServer.Start()
-	if err != nil {
-		return fmt.Errorf("启动 administration server fail:%v", err.Error())
+	if err := s.adminServer.Start(); err != nil {
+		return fmt.Errorf("failed to start administration server: %v", err)
 	}
 
-	err = s.AlertServer.Start()
-	if err != nil {
-		return fmt.Errorf("启动 alert server fail:%v", err.Error())
+	if err := s.AlertServer.Start(); err != nil {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_ = s.adminServer.Shutdown(shutdownCtx)
+		return fmt.Errorf("failed to start alert server: %v", err)
 	}
 
-	err = s.snmpServer.Start()
-	if err != nil {
-		return fmt.Errorf("启动 snmp server fail:%v", err.Error())
+	if err := s.snmpServer.Start(); err != nil {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_ = s.adminServer.Shutdown(shutdownCtx)
+		_ = s.AlertServer.Shutdown(shutdownCtx)
+		return fmt.Errorf("failed to start snmp server: %v", err)
 	}
 
 	return nil
 }
 
 func (s *BaiZeServer) Shutdown(ctx context.Context) error {
-	// TODO 应该记日志
 	err := s.adminServer.Shutdown(ctx)
 	if err != nil {
-		panic(fmt.Sprint("关闭 administration server fail:%v", err.Error()))
-	}
-
-	err = s.snmpServer.Stop()
-	if err != nil {
-		return fmt.Errorf("关闭 snmp server fail:%v", err.Error())
+		return fmt.Errorf("failed to shutdown administration server: %w", err)
 	}
 
 	err = s.AlertServer.Shutdown(ctx)
 	if err != nil {
-		return fmt.Errorf("关闭 alert server fail:%v", err.Error())
+		return fmt.Errorf("failed to shutdown alert server: %w", err)
+	}
+
+	err = s.snmpServer.Stop()
+	if err != nil {
+		return fmt.Errorf("failed to shutdown snmp server: %w", err)
 	}
 
 	return nil
