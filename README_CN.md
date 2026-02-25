@@ -6,135 +6,162 @@
 
 ## 架构设计
 
-白泽平台采用分布式架构，主要由以下组件构成：
+白泽平台采用现代化的微服务架构，主要由以下组件构成：
 
-### 服务端
+### 服务端 (主应用容器)
 
-- **SNMP-trap接收器**: 负责接收来自BMC、交换机等设备的SNMP-trap告警信息
-- **OID映射配置**: 将不同厂商的私有告警信息标准化为统一格式
-- **告警处理引擎**: 实现告警压缩、关联分析和路由功能
-- **配置管理模块**: 通过Redis同步配置信息至各组件
+核心服务组件集成在主容器中：
 
-### Machine Agent
+- **Baize-Server**: 主服务进程，处理告警接收和业务逻辑
+- **内嵌Prometheus引擎**: 负责指标采集和规则告警生成  
+- **内嵌Grafana**: 提供数据可视化和监控仪表板
+- **Nginx反向代理**: 内部服务路由和负载均衡
 
-部署在物理机上的轻量级代理，负责：
+### Machine Agent (二进制包部署)
 
-- **心跳上报**: 定期向服务端上报设备状态
-- **系统日志监听**: 实时监控系统.logs中的异常信息
-- **插件化检测脚本**: 支持扩展各类硬件检测脚本
+部署在物理机上的轻量级代理，采用静态编译架构：
+
+- **内置Exporter集合**: 编译时集成的专用指标采集器
+- **配置驱动采集**: 通过配置文件控制启用的监控项
+- **最小化接口**: 仅暴露必要的管理API接口
+- **安全隔离**: 无动态插件加载，杜绝远程代码执行风险
 
 ```mermaid
 graph TB
-    %% 定义样式
-    classDef core fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef input fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef config fill:#fff3e0,stroke:#ff6f00,stroke-width:2px
-    classDef output fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
-    classDef lock fill:#ffebee,stroke:#c62828,stroke-width:2px
+   %% 定义样式
+   classDef core fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+   classDef input fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+   classDef container fill:#fff3e0,stroke:#ff6f00,stroke-width:2px
+   classDef output fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
 
-    %% 数据输入层
-    A1[BMC<br/>带外告警]
-    A2[网络交换机]
-    A3[Machine-Agent<br/>带内感知]
-    A4[主动检测插件]
+   %% 数据输入层 - 顶部
+   subgraph "数据输入层"
+      direction TB
+      A1[BMC<br/>SNMP Trap告警]
+      A2[网络设备]
+   end
 
-    %% 白泽核心引擎
-    B1[SNMP Trap/Inform<br/>接收器<br/>UDP Listener]
+   %% Agent端 - 位于输入层下方，作为主要数据源
+   subgraph "Agent端 (二进制包)"
+      direction LR   %% 水平排列使内部组件靠近输出侧
+      C1[内置Exporters<br/>系统/硬件指标]
+      C2[配置管理<br/>静态编译]
+      C3[安全接口<br/>查询/启停]
+      C4[主动检测任务]
+      A3[Baize-Agent<br/>指标采集]
+      C1 --> A3
+      C2 --> A3
+      C3 <--> A3
+      C4 --> A3
+   end
 
-    %% 新增：分布式锁控制层
-    B1_5[消息去重与锁管理<br/>MD5指纹+Redis分布式锁]
+   %% 服务端容器 - 水平排列，从左到右：Prometheus, Server, Grafana, Nginx
+   subgraph "服务端容器"
+      direction LR
+      B2[Prometheus引擎<br/>指标采集]
+      B1[Baize-Server<br/>主服务进程]
+      B3[Grafana<br/>数据可视化]
+      B5[Nginx<br/>反向代理]
+   end
 
-    B2[标准化处理引擎<br/>V1, V2c, V3]
-    B3[OID语义映射<br/>告警时间/部位/内容/级别/SN]
-    B4[智能告警处理<br/>压缩·关联·路由]
+   %% 数据库容器 - 独立于右侧
+   subgraph "数据库容器"
+      B4[PostgreSQL<br/>数据存储]
+   end
 
-    %% 配置与治理
-    C[统一配置中心<br/>Redis]
+   %% 输出层 - 底部
+   subgraph "输出层"
+      D1[统一管理界面 & grafana监控仪表板]
+   end
 
-    %% 输出与控制
-    D1[统一控制台<br/>Web UI]
-    D2[多端通知<br/>邮件/钉钉/微信]
-    D3[事件与工单系统]
+   %% 连接关系（保持原逻辑）
+   A1 -->|SNMP Trap| B1
+   A2 -->|SNMP Trap| B1
 
-    %% 连接关系
-    A1 -->|SNMP Trap| B1
-    A2 -->|SNMP Trap| B1
-    A3 -->|SNMP Inform<br/>心跳/日志/检测| B1
-    A3 --> A4
+   A3 -->|Metrics| B2          
+   %% Agent指标直接进入Prometheus
+  
+   C3 <-->|查询/控制| B1       
+   %% 安全接口与Server双向通信
 
-    B1 -->|原始报文| B1_5
-    B1_5 -->|加锁成功| B2
-    B1_5 -.->|MD5指纹| C
-    B2 --> B3
-    B3 --> B4
+   B1 <--> B4                  
+   %% Server读写数据库
+   B3 <--> B4                   
+   %% Grafana读取数据库
 
-    C -->|同步配置| B3
-    C -->|下发插件/规则| A3
+   B1 --> B5                    
+   %% Server通过Nginx暴露
+   B3 --> B5                   
+   %% Grafana通过Nginx暴露
+   B5 --> D1                   
+   %% Nginx代理至统一界面
+   B2 --> B3
 
-    B4 --> D1
-    B4 --> D2
-    B4 --> D3
-
-    %% 应用样式
-    class B1,B2,B3,B4 core
-    class A1,A2,A3,A4 input
-    class C config
-    class D1,D2,D3 output
-    class B1_5 lock
-
-    %% 分组框
-    subgraph 数据输入层
-        A1
-        A2
-        A3
-        A4
-    end
-
-    subgraph 白泽核心引擎
-        B1
-        B1_5
-        B2
-        B3
-        B4
-    end
-
-    subgraph 配置与治理
-        C
-    end
-
-    subgraph 输出与控制
-        D1
-        D2
-        D3
-    end
+   %% 应用样式
+   class B1,B2,B3,B5 container
+   class B4 database
+   class A1,A2 input
+   class C1,C2,C3,C4,A3 core
+   class D1 output
 ```
 
 ## 核心优势
 
-1. **统一性**: 统一处理多厂商硬件告警，消除信息孤岛
-2. **标准化**: 通过OID映射将私有告警转化为标准格式
-3. **主动性**: 不仅被动接收告警，还能主动发现潜在问题
-4. **可扩展性**: 插件化架构支持灵活扩展检测能力
-5. **容器化部署**: 支持Docker和Kubernetes部署，便于运维管理
+1. **微服务架构**: 数据库独立部署，提高系统可靠性
+2. **极简部署**: 主服务单容器化部署，降低运维复杂度
+3. **安全可控**: Agent静态编译架构，杜绝动态代码执行风险
+4. **统一管理**: 配置和数据统一存储在PostgreSQL中
+5. **标准化**: 复用Prometheus生态，指标采集标准化
+6. **主动监控**: 支持SNMP Trap被动接收和Agent主动检测
+7. **可视化**: 内嵌Grafana提供丰富的监控仪表板
 
 ## 解决的问题
 
-- 硬件故障预警不足
-- 厂商工具孤立，缺乏统一管理
-- 系统日志异常难以捕捉
-- 多厂商设备告警信息格式不统一
-- 缺乏主动监控能力
+- 多厂商设备告警格式不统一
+- 硬件故障预警能力不足
+- 厂商工具孤立，形成信息孤岛
+- 系统资源监控缺乏主动发现能力
+- 部署复杂，运维成本高
 
-## 部署方式
+## 部署使用流程
 
-白泽支持多种部署方式，包括传统物理机部署和容器化部署，满足不同环境需求。
+1. **数据库部署**
+   ```bash
+   docker run -p 5432:5432 -e POSTGRES_PASSWORD=your_password postgres:14
+   ```
+
+2. **服务端部署**
+   ```bash
+   docker run -p 9988:9988 -p 9898:9898 -p 3000:3000 \
+              -e DB_HOST=postgresql_host \
+              -e DB_PASSWORD=your_password \
+              baize/server:latest
+   ```
+
+3. **Agent配置**
+   - 通过Web界面配置需要的监控项
+   - 生成定制化Agent配置文件
+
+3. **Agent部署**
+   - 根据配置编译定制化二进制包
+   - 分发到目标监控机器
+
+4. **服务发现**
+   - 批量上传监控目标IP地址
+   - 系统自动生成监控配置
+
+## 技术特点
+
+- **容器化优先**: 生产级Docker部署支持
+- **安全第一**: 最小权限原则，静态编译架构
+- **可观测性**: 完整的监控告警体系
 
 ## 社区与贡献
 
 诚邀您加入白泽社区，共同完善这个硬件监控平台。无论您是开发者、运维工程师还是对硬件监控感兴趣的用户，都欢迎为项目贡献代码、文档或提出宝贵建议。
 
-提交Issue报告问题或建议新功能
-Fork项目并提交Pull Request贡献代码
-参与讨论和文档完善工作
+- 提交Issue报告问题或建议新功能
+- Fork项目并提交Pull Request贡献代码
+- 参与讨论和文档完善工作
 
 [English Version](README.md)
