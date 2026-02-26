@@ -46,20 +46,20 @@ graph TB
       direction TB
       A1[BMC<br/>SNMP TrapAlerts]
       A2[Network Devices]
-   end
 
-   %% Agent End - Below Input Layer, as main data source
-   subgraph "Agent End (Binary Package)"
-      direction LR
-      C1[Built-in Exporters<br/>System/Hardware Metrics]
-      C2[Configuration Management<br/>Static Compilation]
-      C3[Security Interface<br/>Query/Start-Stop]
-      C4[Active Detection Tasks]
-      A3[Baize-Agent<br/>Metric Collection]
-      C1 --> A3
-      C2 --> A3
-      C3 <--> A3
-      C4 --> A3
+      %% Agent End - Below Input Layer, as main data source
+      subgraph "Agent End (Binary Package)"
+         direction LR
+         C1[Built-in Exporters<br/>System/Hardware Metrics]
+         C2[Configuration Management<br/>Static Compilation]
+         C3[Security Interface<br/>Query/Start-Stop]
+         C4[Active Detection Tasks]
+         A3[Baize-Agent<br/>Metric Collection]
+         C1 --> A3
+         C2 --> A3
+         C3 <--> A3
+         C4 --> A3
+      end
    end
 
    %% Server Container - Horizontal arrangement

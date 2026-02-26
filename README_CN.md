@@ -39,20 +39,20 @@ graph TB
       direction TB
       A1[BMC<br/>SNMP Trap告警]
       A2[网络设备]
-   end
 
-   %% Agent端 - 位于输入层下方，作为主要数据源
-   subgraph "Agent端 (二进制包)"
-      direction LR   %% 水平排列使内部组件靠近输出侧
-      C1[内置Exporters<br/>系统/硬件指标]
-      C2[配置管理<br/>静态编译]
-      C3[安全接口<br/>查询/启停]
-      C4[主动检测任务]
-      A3[Baize-Agent<br/>指标采集]
-      C1 --> A3
-      C2 --> A3
-      C3 <--> A3
-      C4 --> A3
+      %% Agent端 - 位于输入层下方，作为主要数据源
+      subgraph "Agent端 (二进制包)"
+         direction LR   %% 水平排列使内部组件靠近输出侧
+         C1[内置Exporters<br/>系统/硬件指标]
+         C2[配置管理<br/>静态编译]
+         C3[安全接口<br/>查询/启停]
+         C4[主动检测任务]
+         A3[Baize-Agent<br/>指标采集]
+         C1 --> A3
+         C2 --> A3
+         C3 <--> A3
+         C4 --> A3
+      end
    end
 
    %% 服务端容器 - 水平排列，从左到右：Prometheus, Server, Grafana, Nginx
