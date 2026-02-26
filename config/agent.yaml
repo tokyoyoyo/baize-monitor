@@ -1,0 +1,101 @@
+# BaiZe Agent Configuration
+
+# 服务端配置
+server_url: "http://localhost:9988"
+
+# 心跳间隔（秒）
+heartbeat_interval: 30s
+
+# 指标暴露端口
+metrics_port: 9100
+
+# 节点名称
+node_name: "default-node"
+
+# 日志级别
+log_level: "info"
+
+# Exporter配置
+exporters:
+  # Node Exporter配置
+  node:
+    enabled: true
+    collect_interval: 15s
+    
+  # Hardware Exporter配置
+  hardware:
+    enabled: true
+    collect_interval: 60s
+    
+  # Plugin Exporter配置
+  plugin:
+    enabled: true
+    collect_interval: 30s
+
+# 插件配置
+plugins:
+  # CPU温度监控插件
+  cpu_temperature:
+    enabled: true
+    tool: "osascript"
+    parameters: ["-e", "do shell script \"sysctl -n machdep.cpu.core_temp\""]
+    interval: 30s
+    description: "Monitors CPU temperature using system commands"
+    
+  # 内存使用率监控插件
+  memory_usage:
+    enabled: true
+    tool: "vm_stat"
+    parameters: []
+    interval: 30s
+    description: "Monitors system memory usage"
+    
+  # 磁盘空间监控插件
+  disk_space:
+    enabled: true
+    tool: "df"
+    parameters: ["-B1"]
+    interval: 60s
+    description: "Monitors disk space usage"
+    
+  # 网络连接数监控插件
+  network_connections:
+    enabled: true
+    tool: "netstat"
+    parameters: ["-an"]
+    interval: 30s
+    description: "Monitors network connections"
+
+# 硬件监控配置
+hardware:
+  # CPU监控
+  cpu:
+    enabled: true
+    metrics:
+      - temperature
+      - frequency
+      - usage
+      
+  # 内存监控
+  memory:
+    enabled: true
+    metrics:
+      - total
+      - used
+      - available
+      
+  # 存储监控
+  storage:
+    enabled: true
+    metrics:
+      - health
+      - temperature
+      - lifetime
+      
+  # 网络监控
+  network:
+    enabled: true
+    metrics:
+      - bandwidth
+      - errors
+      - packets
