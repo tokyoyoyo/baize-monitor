@@ -22,11 +22,8 @@ import (
 	machineExporter "baize-monitor/internal/agent/exporters/machine_info"
 	metricsExporter "baize-monitor/internal/agent/exporters/metrics"
 
-	// 导入插件
-	anomalyPlugins "baize-monitor/internal/agent/exporters/anomaly/plugins"
-	hardwarePlugins "baize-monitor/internal/agent/exporters/hardware/plugins"
-	machinePlugins "baize-monitor/internal/agent/exporters/machine_info/plugins"
-	metricsPlugins "baize-monitor/internal/agent/exporters/metrics/plugins"
+	// 导入插件接口
+	"baize-monitor/internal/agent/plugins"
 )
 
 // AgentConfig Agent配置结构
@@ -115,67 +112,88 @@ func (a *Agent) GetExporter(name string) (Exporter, error) {
 	return exporter, nil
 }
 
-// InitializeExporters 初始化所有Exporter
+// InitializeExporters 初始化所有Exporter并使用已注册的插件
 func (a *Agent) InitializeExporters() error {
-	log.Println("Initializing exporters...")
+	log.Println("Initializing exporters with registered plugins...")
 
-	// 创建并注册Machine Info Exporter
-	machineExp := machineExporter.NewExporter()
-	if err := a.RegisterExporter("machine_info", machineExp); err != nil {
-		return fmt.Errorf("failed to register machine info exporter: %w", err)
+	// 定义Exporter配置
+	exporterConfigs := []struct {
+		name    string
+		newFunc func() Exporter
+	}{
+		{
+			name:    "machine_info",
+			newFunc: func() Exporter { return machineExporter.NewExporter() },
+		},
+		{
+			name:    "hardware",
+			newFunc: func() Exporter { return hardwareExporter.NewExporter() },
+		},
+		{
+			name:    "metrics",
+			newFunc: func() Exporter { return metricsExporter.NewExporter() },
+		},
+		{
+			name:    "anomaly",
+			newFunc: func() Exporter { return anomalyExporter.NewExporter() },
+		},
 	}
 
-	// 为Machine Info Exporter注册插件
-	hostnamePlugin := machinePlugins.NewHostnameCollector()
-	if err := machineExp.RegisterPlugin(hostnamePlugin); err != nil {
-		log.Printf("Warning: failed to register hostname plugin: %v", err)
-	} else {
-		log.Printf("Plugin registered: %s", hostnamePlugin.Name())
+	// 依次初始化每个Exporter并加载其已注册的插件
+	for _, config := range exporterConfigs {
+		if err := a.initializeExporterWithRegisteredPlugins(config.name, config.newFunc); err != nil {
+			return fmt.Errorf("failed to initialize %s exporter: %w", config.name, err)
+		}
 	}
 
-	// 创建并注册Hardware Exporter
-	hardwareExp := hardwareExporter.NewExporter()
-	if err := a.RegisterExporter("hardware", hardwareExp); err != nil {
-		return fmt.Errorf("failed to register hardware exporter: %w", err)
+	log.Printf("Initialized %d exporters with registered plugins", len(a.exporters))
+	return nil
+}
+
+// getRegisteredPluginsByExporter 根据Exporter类型获取已注册的插件
+func (a *Agent) getRegisteredPluginsByExporter(exporterName string) []plugins.Plugin {
+	switch exporterName {
+	case "machine_info":
+		return plugins.MachineInfoPlugins.GetAllPlugins()
+
+	case "hardware":
+		return plugins.HardwarePlugins.GetAllPlugins()
+
+	case "metrics":
+		return plugins.MetricsPlugins.GetAllPlugins()
+
+	case "anomaly":
+		return plugins.AnomalyPlugins.GetAllPlugins()
+
+	default:
+		log.Printf("Unknown exporter type: %s", exporterName)
+		return []plugins.Plugin{}
+	}
+}
+
+// initializeExporterWithRegisteredPlugins 初始化Exporter并加载已注册的插件
+func (a *Agent) initializeExporterWithRegisteredPlugins(name string, newFunc func() Exporter) error {
+	// 创建Exporter
+	exporter := newFunc()
+
+	// 注册Exporter
+	if err := a.RegisterExporter(name, exporter); err != nil {
+		return fmt.Errorf("failed to register exporter: %w", err)
 	}
 
-	// 为Hardware Exporter注册插件
-	diskPlugin := hardwarePlugins.NewDiskInfoCollector()
-	if err := hardwareExp.RegisterPlugin(diskPlugin); err != nil {
-		log.Printf("Warning: failed to register disk info plugin: %v", err)
-	} else {
-		log.Printf("Plugin registered: %s", diskPlugin.Name())
+	// 获取对应类型的已注册插件
+	registeredPlugins := a.getRegisteredPluginsByExporter(name)
+
+	// 注册发现的插件
+	for _, plugin := range registeredPlugins {
+		if err := exporter.RegisterPlugin(plugin); err != nil {
+			log.Printf("Warning: failed to register plugin %s: %v", plugin.Name(), err)
+		} else {
+			log.Printf("Plugin registered: %s (%s)", plugin.Name(), plugin.Description())
+		}
 	}
 
-	// 创建并注册Metrics Exporter
-	metricsExp := metricsExporter.NewExporter()
-	if err := a.RegisterExporter("metrics", metricsExp); err != nil {
-		return fmt.Errorf("failed to register metrics exporter: %w", err)
-	}
-
-	// 为Metrics Exporter注册插件
-	loadPlugin := metricsPlugins.NewLoadMonitor()
-	if err := metricsExp.RegisterPlugin(loadPlugin); err != nil {
-		log.Printf("Warning: failed to register load monitor plugin: %v", err)
-	} else {
-		log.Printf("Plugin registered: %s", loadPlugin.Name())
-	}
-
-	// 创建并注册Anomaly Exporter
-	anomalyExp := anomalyExporter.NewExporter()
-	if err := a.RegisterExporter("anomaly", anomalyExp); err != nil {
-		return fmt.Errorf("failed to register anomaly exporter: %w", err)
-	}
-
-	// 为Anomaly Exporter注册插件
-	diskLifetimePlugin := anomalyPlugins.NewDiskLifetimeDetector()
-	if err := anomalyExp.RegisterPlugin(diskLifetimePlugin); err != nil {
-		log.Printf("Warning: failed to register disk lifetime plugin: %v", err)
-	} else {
-		log.Printf("Plugin registered: %s", diskLifetimePlugin.Name())
-	}
-
-	log.Printf("Initialized %d exporters", len(a.exporters))
+	log.Printf("Exporter %s initialized with %d registered plugins", name, len(registeredPlugins))
 	return nil
 }
 

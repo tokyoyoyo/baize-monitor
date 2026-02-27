@@ -1,109 +1,160 @@
 package plugins
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
-	"baize-monitor/internal/agent/plugins"
-	"os"
+	"fmt"
+	"os/exec"
+	"strings"
+	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+
+	"baize-monitor/internal/agent/plugins"
 )
 
 // HostnameCollector 主机名收集插件
 type HostnameCollector struct {
-	name              string
-	description       string
-	tool              string
-	parameters        []string
-	interval          time.Duration
-	enabled           bool
-	lastExecutionTime time.Time
-	lastExecutionStatus plugins.ExecutionStatus
+	name           string
+	description    string
+	tool           string
+	parameters     []string
+	interval       time.Duration
+	enabled        bool
+	lastExecution  time.Time
+	lastStatus     plugins.ExecutionStatus
+	mutex          sync.RWMutex
+	executionCount int64
+	successCount   int64
+	failureCount   int64
 }
 
-// NewHostnameCollector 创建主机名收集插件
+// init 函数在包初始化时自动注册插件
+func init() {
+	plugin := NewHostnameCollector()
+	plugins.MachineInfoPlugins.Register(plugin)
+}
+
+// NewHostnameCollector 创建主机名收集插件实例
 func NewHostnameCollector() *HostnameCollector {
-	return &HostnameCollector{
-		name:                "hostname_collector",
-		description:         "Collect machine hostname information",
-		tool:                "hostname",
-		parameters:          []string{},
-		interval:            60 * time.Second,
-		enabled:             true,
-		lastExecutionStatus: plugins.StatusPending,
+	collector := &HostnameCollector{
+		name:        "hostname_collector",
+		description: "Collect machine hostname information",
+		tool:        "hostname",
+		parameters:  []string{},
+		interval:    1 * time.Minute,
+		enabled:     true,
+		lastStatus:  plugins.StatusPending,
 	}
+	return collector
 }
 
-// Name 获取插件名称
-func (hc *HostnameCollector) Name() string {
-	return hc.name
+// Name 返回插件名称
+func (h *HostnameCollector) Name() string {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.name
 }
 
-// Description 获取插件描述
-func (hc *HostnameCollector) Description() string {
-	return hc.description
+// Description 返回插件描述
+func (h *HostnameCollector) Description() string {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.description
 }
 
-// Tool 获取工具名称
-func (hc *HostnameCollector) Tool() string {
-	return hc.tool
+// Tool 返回执行工具
+func (h *HostnameCollector) Tool() string {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.tool
 }
 
-// Parameters 获取参数
-func (hc *HostnameCollector) Parameters() []string {
-	return hc.parameters
+// Parameters 返回执行参数
+func (h *HostnameCollector) Parameters() []string {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.parameters
 }
 
-// Interval 获取执行间隔
-func (hc *HostnameCollector) Interval() time.Duration {
-	return hc.interval
+// Interval 返回执行间隔
+func (h *HostnameCollector) Interval() time.Duration {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.interval
 }
 
-// Execute 执行插件
-func (hc *HostnameCollector) Execute() (interface{}, error) {
-	hc.lastExecutionStatus = plugins.StatusRunning
-	hc.lastExecutionTime = time.Now()
-	
-	hostname, err := os.Hostname()
+// Execute 执行插件逻辑
+func (h *HostnameCollector) Execute() (interface{}, error) {
+	h.mutex.Lock()
+	h.lastExecution = time.Now()
+	h.lastStatus = plugins.StatusRunning
+	h.executionCount++
+	h.mutex.Unlock()
+
+	// 执行hostname命令
+	cmd := exec.Command(h.tool, h.parameters...)
+	output, err := cmd.Output()
+
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+
 	if err != nil {
-		hc.lastExecutionStatus = plugins.StatusFailed
-		return nil, err
+		h.lastStatus = plugins.StatusFailed
+		h.failureCount++
+		return nil, fmt.Errorf("failed to execute %s: %w", h.tool, err)
 	}
-	
+
+	hostname := strings.TrimSpace(string(output))
+	h.lastStatus = plugins.StatusSuccess
+	h.successCount++
+
 	result := map[string]interface{}{
-		"hostname": hostname,
-		"collected_at": time.Now().Unix(),
+		"hostname":  hostname,
+		"tool":      h.tool,
+		"timestamp": h.lastExecution,
 	}
-	
-	hc.lastExecutionStatus = plugins.StatusSuccess
+
 	return result, nil
 }
 
-// LastExecutionStatus 获取最后执行状态
-func (hc *HostnameCollector) LastExecutionStatus() plugins.ExecutionStatus {
-	return hc.lastExecutionStatus
+// LastExecutionStatus 返回最后执行状态
+func (h *HostnameCollector) LastExecutionStatus() plugins.ExecutionStatus {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.lastStatus
 }
 
-// LastExecutionTime 获取最后执行时间
-func (hc *HostnameCollector) LastExecutionTime() time.Time {
-	return hc.lastExecutionTime
+// LastExecutionTime 返回最后执行时间
+func (h *HostnameCollector) LastExecutionTime() time.Time {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.lastExecution
 }
 
-// Enabled 获取启用状态
-func (hc *HostnameCollector) Enabled() bool {
-	return hc.enabled
+// Enabled 返回是否启用
+func (h *HostnameCollector) Enabled() bool {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.enabled
 }
 
 // SetEnabled 设置启用状态
-func (hc *HostnameCollector) SetEnabled(enabled bool) {
-	hc.enabled = enabled
+func (h *HostnameCollector) SetEnabled(enabled bool) {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+	h.enabled = enabled
+	if !enabled {
+		h.lastStatus = plugins.StatusDisabled
+	}
 }
 
-// Describe 描述指标
-func (hc *HostnameCollector) Describe(ch chan<- *prometheus.Desc) {
-	// 插件特定指标描述
+// Describe 实现Prometheus Collector接口
+func (h *HostnameCollector) Describe(ch chan<- *prometheus.Desc) {
+	// 描述插件相关的指标
 }
 
-// Collect 收集指标
-func (hc *HostnameCollector) Collect(ch chan<- prometheus.Metric) {
-	// 插件特定指标收集
-	// 这里可以根据执行结果生成Prometheus指标
+// Collect 实现Prometheus Collector接口
+func (h *HostnameCollector) Collect(ch chan<- prometheus.Metric) {
+	// 这里可以收集插件相关的指标
+	// 例如执行次数、成功率等
 }

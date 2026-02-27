@@ -6,22 +6,29 @@ import (
 	"os"
 	"time"
 
-	"baize-monitor/internal/agent/core"
 	"github.com/spf13/viper"
+
+	"baize-monitor/internal/agent/core"
+
+	// 强制导入插件包以触发自动注册
+	_ "baize-monitor/internal/agent/exporters/anomaly/plugins"
+	_ "baize-monitor/internal/agent/exporters/hardware/plugins"
+	_ "baize-monitor/internal/agent/exporters/machine_info/plugins"
+	_ "baize-monitor/internal/agent/exporters/metrics/plugins"
 )
 
 func main() {
 	fmt.Println("Starting BaiZe Agent with new architecture...")
-	
+
 	// 加载配置
 	config, err := loadConfig()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
-	
+
 	// 创建Agent实例
 	agent := core.NewAgent(config)
-	
+
 	// 运行Agent
 	if err := agent.Run(); err != nil {
 		log.Fatalf("Agent failed: %v", err)
@@ -36,16 +43,16 @@ func loadConfig() (*core.AgentConfig, error) {
 	viper.SetDefault("metrics_port", 9100)
 	viper.SetDefault("node_name", getHostname())
 	viper.SetDefault("log_level", "info")
-	
+
 	// 读取配置文件
 	viper.SetConfigName("agent")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("./config")
 	viper.AddConfigPath(".")
-	
+
 	// 读取环境变量
 	viper.AutomaticEnv()
-	
+
 	// 尝试读取配置文件
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
@@ -56,7 +63,7 @@ func loadConfig() (*core.AgentConfig, error) {
 	} else {
 		log.Printf("Using config file: %s", viper.ConfigFileUsed())
 	}
-	
+
 	// 创建配置结构体
 	config := &core.AgentConfig{
 		ServerURL:         viper.GetString("server_url"),
@@ -65,14 +72,14 @@ func loadConfig() (*core.AgentConfig, error) {
 		NodeName:          viper.GetString("node_name"),
 		LogLevel:          viper.GetString("log_level"),
 	}
-	
+
 	// 打印配置信息
 	fmt.Printf("Agent configuration loaded:\n")
 	fmt.Printf("  Server URL: %s\n", config.ServerURL)
 	fmt.Printf("  Heartbeat Interval: %v\n", config.HeartbeatInterval)
 	fmt.Printf("  Metrics Port: %d\n", config.MetricsPort)
 	fmt.Printf("  Node Name: %s\n", config.NodeName)
-	
+
 	return config, nil
 }
 
