@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	// 导入各个Exporter
@@ -229,8 +230,8 @@ func (a *Agent) Start() error {
 // startMetricsServer 启动指标服务器
 func (a *Agent) startMetricsServer() error {
 	// 注册默认收集器
-	a.registry.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
-	a.registry.MustRegister(prometheus.NewGoCollector())
+	a.registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	a.registry.MustRegister(collectors.NewGoCollector())
 
 	// 创建HTTP处理器
 	handler := promhttp.HandlerFor(a.registry, promhttp.HandlerOpts{
