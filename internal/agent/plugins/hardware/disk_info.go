@@ -1,7 +1,7 @@
-package plugins
+package hardware
 
 import (
-	"baize-monitor/internal/agent/plugins"
+	"baize-monitor/pkg/constants"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -11,24 +11,24 @@ import (
 type DiskInfoCollector struct {
 	name                string
 	description         string
-	tool                string
+	tools               []string
 	parameters          []string
 	interval            time.Duration
 	enabled             bool
 	lastExecutionTime   time.Time
-	lastExecutionStatus plugins.ExecutionStatus
+	lastExecutionStatus constants.ExecutionStatus
 }
 
-// NewDiskInfoCollector 创建磁盘信息收集插件
-func NewDiskInfoCollector() *DiskInfoCollector {
+// newDiskInfoCollector 创建磁盘信息收集插件
+func newDiskInfoCollector() *DiskInfoCollector {
 	return &DiskInfoCollector{
 		name:                "disk_info_collector",
 		description:         "Collect disk hardware information",
-		tool:                "lsblk",
+		tools:               []string{"lsblk"},
 		parameters:          []string{"-J"}, // JSON格式输出
 		interval:            120 * time.Second,
 		enabled:             true,
-		lastExecutionStatus: plugins.StatusPending,
+		lastExecutionStatus: constants.StatusPending,
 	}
 }
 
@@ -43,8 +43,8 @@ func (dic *DiskInfoCollector) Description() string {
 }
 
 // Tool 获取工具名称
-func (dic *DiskInfoCollector) Tool() string {
-	return dic.tool
+func (dic *DiskInfoCollector) Tools() []string {
+	return dic.tools
 }
 
 // Parameters 获取参数
@@ -59,7 +59,7 @@ func (dic *DiskInfoCollector) Interval() time.Duration {
 
 // Execute 执行插件
 func (dic *DiskInfoCollector) Execute() (interface{}, error) {
-	dic.lastExecutionStatus = plugins.StatusRunning
+	dic.lastExecutionStatus = constants.StatusRunning
 	dic.lastExecutionTime = time.Now()
 
 	// 简化实现，实际应该执行命令获取磁盘信息
@@ -75,12 +75,12 @@ func (dic *DiskInfoCollector) Execute() (interface{}, error) {
 		"collected_at": time.Now().Unix(),
 	}
 
-	dic.lastExecutionStatus = plugins.StatusSuccess
+	dic.lastExecutionStatus = constants.StatusSuccess
 	return result, nil
 }
 
 // LastExecutionStatus 获取最后执行状态
-func (dic *DiskInfoCollector) LastExecutionStatus() plugins.ExecutionStatus {
+func (dic *DiskInfoCollector) LastExecutionStatus() constants.ExecutionStatus {
 	return dic.lastExecutionStatus
 }
 

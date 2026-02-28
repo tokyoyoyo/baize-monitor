@@ -1,6 +1,7 @@
-package plugins
+package machine_info
 
 import (
+	"baize-monitor/pkg/constants"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -8,42 +9,34 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-
-	"baize-monitor/internal/agent/plugins"
 )
 
 // HostnameCollector 主机名收集插件
 type HostnameCollector struct {
 	name           string
 	description    string
-	tool           string
+	tools          []string
 	parameters     []string
 	interval       time.Duration
 	enabled        bool
 	lastExecution  time.Time
-	lastStatus     plugins.ExecutionStatus
+	lastStatus     constants.ExecutionStatus
 	mutex          sync.RWMutex
 	executionCount int64
 	successCount   int64
 	failureCount   int64
 }
 
-// init 函数在包初始化时自动注册插件
-func init() {
-	plugin := NewHostnameCollector()
-	plugins.MachineInfoPlugins.Register(plugin)
-}
-
 // NewHostnameCollector 创建主机名收集插件实例
-func NewHostnameCollector() *HostnameCollector {
+func newHostnameCollector() *HostnameCollector {
 	collector := &HostnameCollector{
 		name:        "hostname_collector",
 		description: "Collect machine hostname information",
-		tool:        "hostname",
+		tools:       []string{"hostname"},
 		parameters:  []string{},
 		interval:    1 * time.Minute,
 		enabled:     true,
-		lastStatus:  plugins.StatusPending,
+		lastStatus:  constants.StatusPending,
 	}
 	return collector
 }
@@ -62,11 +55,11 @@ func (h *HostnameCollector) Description() string {
 	return h.description
 }
 
-// Tool 返回执行工具
-func (h *HostnameCollector) Tool() string {
+// Tools 返回执行工具
+func (h *HostnameCollector) Tools() []string {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
-	return h.tool
+	return h.tools
 }
 
 // Parameters 返回执行参数
@@ -87,30 +80,30 @@ func (h *HostnameCollector) Interval() time.Duration {
 func (h *HostnameCollector) Execute() (interface{}, error) {
 	h.mutex.Lock()
 	h.lastExecution = time.Now()
-	h.lastStatus = plugins.StatusRunning
+	h.lastStatus = constants.StatusRunning
 	h.executionCount++
 	h.mutex.Unlock()
 
 	// 执行hostname命令
-	cmd := exec.Command(h.tool, h.parameters...)
+	cmd := exec.Command("hostname", h.parameters...)
 	output, err := cmd.Output()
 
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
 	if err != nil {
-		h.lastStatus = plugins.StatusFailed
+		h.lastStatus = constants.StatusFailed
 		h.failureCount++
-		return nil, fmt.Errorf("failed to execute %s: %w", h.tool, err)
+		return nil, fmt.Errorf("failed to execute %s: %w", h.tools, err)
 	}
 
 	hostname := strings.TrimSpace(string(output))
-	h.lastStatus = plugins.StatusSuccess
+	h.lastStatus = constants.StatusSuccess
 	h.successCount++
 
 	result := map[string]interface{}{
 		"hostname":  hostname,
-		"tool":      h.tool,
+		"tool":      h.tools,
 		"timestamp": h.lastExecution,
 	}
 
@@ -118,7 +111,7 @@ func (h *HostnameCollector) Execute() (interface{}, error) {
 }
 
 // LastExecutionStatus 返回最后执行状态
-func (h *HostnameCollector) LastExecutionStatus() plugins.ExecutionStatus {
+func (h *HostnameCollector) LastExecutionStatus() constants.ExecutionStatus {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 	return h.lastStatus
@@ -144,7 +137,7 @@ func (h *HostnameCollector) SetEnabled(enabled bool) {
 	defer h.mutex.Unlock()
 	h.enabled = enabled
 	if !enabled {
-		h.lastStatus = plugins.StatusDisabled
+		h.lastStatus = constants.StatusDisabled
 	}
 }
 

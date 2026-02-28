@@ -1,28 +1,29 @@
-package hardware
+package exporters
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
-	"baize-monitor/internal/agent/plugins" // 使用相对独立的插件包
+	"baize-monitor/internal/agent/core"
 	"log"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
-// Exporter 硬件信息Exporter
-type Exporter struct {
+// HardwareExporter 硬件信息Exporter
+type HardwareExporter struct {
 	name            string
 	description     string
-	plugins         []plugins.Plugin
+	plugins         []core.Plugin
 	cpuInfoDesc     *prometheus.Desc
 	memoryInfoDesc  *prometheus.Desc
 	diskInfoDesc    *prometheus.Desc
 	networkInfoDesc *prometheus.Desc
 }
 
-// NewExporter 创建硬件信息Exporter
-func NewExporter() *Exporter {
-	return &Exporter{
+// 创建硬件信息Exporter
+func newHardwareExporter() *HardwareExporter {
+	return &HardwareExporter{
 		name:        "hardware",
 		description: "Hardware information collector",
-		plugins:     make([]plugins.Plugin, 0),
+		plugins:     make([]core.Plugin, 0),
 		cpuInfoDesc: prometheus.NewDesc(
 			"baize_hardware_cpu_info",
 			"CPU hardware information",
@@ -46,46 +47,46 @@ func NewExporter() *Exporter {
 	}
 }
 
-// Name 获取Exporter名称
-func (e *Exporter) Name() string {
+// Name 获取HardwareExporter名称
+func (e *HardwareExporter) Name() string {
 	return e.name
 }
 
-// Description 获取Exporter描述
-func (e *Exporter) Description() string {
+// Description 获取HardwareExporter描述
+func (e *HardwareExporter) Description() string {
 	return e.description
 }
 
 // Start 启动Exporter
-func (e *Exporter) Start() error {
+func (e *HardwareExporter) Start() error {
 	log.Printf("Hardware exporter started")
 	return nil
 }
 
 // Stop 停止Exporter
-func (e *Exporter) Stop() error {
+func (e *HardwareExporter) Stop() error {
 	log.Printf("Hardware exporter stopped")
 	return nil
 }
 
 // RegisterPlugin 注册插件
-func (e *Exporter) RegisterPlugin(plugin plugins.Plugin) error {
+func (e *HardwareExporter) RegisterPlugin(plugin core.Plugin) error {
 	e.plugins = append(e.plugins, plugin)
 	return nil
 }
 
 // GetPlugins 获取所有插件
-func (e *Exporter) GetPlugins() []plugins.Plugin {
+func (e *HardwareExporter) GetPlugins() []core.Plugin {
 	return e.plugins
 }
 
 // Describe 描述指标
-func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
+func (e *HardwareExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.cpuInfoDesc
 	ch <- e.memoryInfoDesc
 	ch <- e.diskInfoDesc
 	ch <- e.networkInfoDesc
-	
+
 	// 描述插件指标
 	for _, plugin := range e.plugins {
 		plugin.Describe(ch)
@@ -93,10 +94,10 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 }
 
 // Collect 收集指标
-func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
+func (e *HardwareExporter) Collect(ch chan<- prometheus.Metric) {
 	// 收集硬件基本信息
 	e.collectHardwareInfo(ch)
-	
+
 	// 收集插件指标
 	for _, plugin := range e.plugins {
 		if plugin.Enabled() {
@@ -106,7 +107,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 }
 
 // collectHardwareInfo 收集硬件基本信息
-func (e *Exporter) collectHardwareInfo(ch chan<- prometheus.Metric) {
+func (e *HardwareExporter) collectHardwareInfo(ch chan<- prometheus.Metric) {
 	// 简化实现，实际应该获取详细的硬件信息
 	ch <- prometheus.MustNewConstMetric(
 		e.cpuInfoDesc,
@@ -116,7 +117,7 @@ func (e *Exporter) collectHardwareInfo(ch chan<- prometheus.Metric) {
 		"unknown-cores",
 		"unknown-threads",
 	)
-	
+
 	ch <- prometheus.MustNewConstMetric(
 		e.memoryInfoDesc,
 		prometheus.GaugeValue,
@@ -124,7 +125,7 @@ func (e *Exporter) collectHardwareInfo(ch chan<- prometheus.Metric) {
 		"unknown-type",
 		"unknown-speed",
 	)
-	
+
 	ch <- prometheus.MustNewConstMetric(
 		e.diskInfoDesc,
 		prometheus.GaugeValue,
@@ -133,7 +134,7 @@ func (e *Exporter) collectHardwareInfo(ch chan<- prometheus.Metric) {
 		"unknown-model",
 		"unknown-type",
 	)
-	
+
 	ch <- prometheus.MustNewConstMetric(
 		e.networkInfoDesc,
 		prometheus.GaugeValue,

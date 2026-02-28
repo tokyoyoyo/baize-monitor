@@ -1,33 +1,34 @@
-package plugins
+package anomaly
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
-	"baize-monitor/internal/agent/plugins"
+	"baize-monitor/pkg/constants"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // DiskLifetimeDetector 磁盘寿命检测插件
 type DiskLifetimeDetector struct {
-	name              string
-	description       string
-	tool              string
-	parameters        []string
-	interval          time.Duration
-	enabled           bool
-	lastExecutionTime time.Time
-	lastExecutionStatus plugins.ExecutionStatus
+	name                string
+	description         string
+	tools               []string
+	parameters          []string
+	interval            time.Duration
+	enabled             bool
+	lastExecutionTime   time.Time
+	lastExecutionStatus constants.ExecutionStatus
 }
 
-// NewDiskLifetimeDetector 创建磁盘寿命检测插件
-func NewDiskLifetimeDetector() *DiskLifetimeDetector {
+// newDiskLifetimeDetector 创建磁盘寿命检测插件
+func newDiskLifetimeDetector() *DiskLifetimeDetector {
 	return &DiskLifetimeDetector{
 		name:                "disk_lifetime_detector",
 		description:         "Detect disk lifetime and predict failure",
-		tool:                "smartctl",
+		tools:               []string{"smartctl"},
 		parameters:          []string{"--info", "/dev/sda"},
 		interval:            300 * time.Second, // 5分钟执行一次
 		enabled:             true,
-		lastExecutionStatus: plugins.StatusPending,
+		lastExecutionStatus: constants.StatusPending,
 	}
 }
 
@@ -42,8 +43,8 @@ func (dld *DiskLifetimeDetector) Description() string {
 }
 
 // Tool 获取工具名称
-func (dld *DiskLifetimeDetector) Tool() string {
-	return dld.tool
+func (dld *DiskLifetimeDetector) Tools() []string {
+	return dld.tools
 }
 
 // Parameters 获取参数
@@ -58,26 +59,26 @@ func (dld *DiskLifetimeDetector) Interval() time.Duration {
 
 // Execute 执行插件
 func (dld *DiskLifetimeDetector) Execute() (interface{}, error) {
-	dld.lastExecutionStatus = plugins.StatusRunning
+	dld.lastExecutionStatus = constants.StatusRunning
 	dld.lastExecutionTime = time.Now()
-	
+
 	// 简化实现，实际应该解析smartctl输出
 	result := map[string]interface{}{
-		"device": "/dev/sda",
-		"health_status": "OK",
-		"remaining_life": 85, // 剩余寿命百分比
-		"power_on_hours": 15000,
+		"device":              "/dev/sda",
+		"health_status":       "OK",
+		"remaining_life":      85, // 剩余寿命百分比
+		"power_on_hours":      15000,
 		"reallocated_sectors": 0,
-		"pending_sectors": 0,
-		"collected_at": time.Now().Unix(),
+		"pending_sectors":     0,
+		"collected_at":        time.Now().Unix(),
 	}
-	
-	dld.lastExecutionStatus = plugins.StatusSuccess
+
+	dld.lastExecutionStatus = constants.StatusSuccess
 	return result, nil
 }
 
 // LastExecutionStatus 获取最后执行状态
-func (dld *DiskLifetimeDetector) LastExecutionStatus() plugins.ExecutionStatus {
+func (dld *DiskLifetimeDetector) LastExecutionStatus() constants.ExecutionStatus {
 	return dld.lastExecutionStatus
 }
 

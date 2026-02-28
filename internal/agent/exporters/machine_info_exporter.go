@@ -1,28 +1,29 @@
-package machine_info
+package exporters
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
-	"baize-monitor/internal/agent/plugins"
+	"baize-monitor/internal/agent/core"
 	"log"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
-// Exporter 机器信息Exporter
-type Exporter struct {
-	name            string
-	description     string
-	plugins         []plugins.Plugin
-	hostnameDesc    *prometheus.Desc
-	ipAddressDesc   *prometheus.Desc
-	biosInfoDesc    *prometheus.Desc
+// MachineInfoExporter 机器信息Exporter
+type MachineInfoExporter struct {
+	name             string
+	description      string
+	plugins          []core.Plugin
+	hostnameDesc     *prometheus.Desc
+	ipAddressDesc    *prometheus.Desc
+	biosInfoDesc     *prometheus.Desc
 	systemVendorDesc *prometheus.Desc
 }
 
-// NewExporter 创建机器信息Exporter
-func NewExporter() *Exporter {
-	return &Exporter{
+// NewMachineInfoExporter 创建机器信息Exporter
+func newMachineInfoExporter() *MachineInfoExporter {
+	return &MachineInfoExporter{
 		name:        "machine_info",
 		description: "Machine information collector",
-		plugins:     make([]plugins.Plugin, 0),
+		plugins:     make([]core.Plugin, 0),
 		hostnameDesc: prometheus.NewDesc(
 			"baize_machine_hostname",
 			"Machine hostname",
@@ -47,45 +48,45 @@ func NewExporter() *Exporter {
 }
 
 // Name 获取Exporter名称
-func (e *Exporter) Name() string {
+func (e *MachineInfoExporter) Name() string {
 	return e.name
 }
 
 // Description 获取Exporter描述
-func (e *Exporter) Description() string {
+func (e *MachineInfoExporter) Description() string {
 	return e.description
 }
 
 // Start 启动Exporter
-func (e *Exporter) Start() error {
+func (e *MachineInfoExporter) Start() error {
 	log.Printf("Machine info exporter started")
 	return nil
 }
 
 // Stop 停止Exporter
-func (e *Exporter) Stop() error {
+func (e *MachineInfoExporter) Stop() error {
 	log.Printf("Machine info exporter stopped")
 	return nil
 }
 
 // RegisterPlugin 注册插件
-func (e *Exporter) RegisterPlugin(plugin plugins.Plugin) error {
+func (e *MachineInfoExporter) RegisterPlugin(plugin core.Plugin) error {
 	e.plugins = append(e.plugins, plugin)
 	return nil
 }
 
 // GetPlugins 获取所有插件
-func (e *Exporter) GetPlugins() []plugins.Plugin {
+func (e *MachineInfoExporter) GetPlugins() []core.Plugin {
 	return e.plugins
 }
 
 // Describe 描述指标
-func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
+func (e *MachineInfoExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.hostnameDesc
 	ch <- e.ipAddressDesc
 	ch <- e.biosInfoDesc
 	ch <- e.systemVendorDesc
-	
+
 	// 描述插件指标
 	for _, plugin := range e.plugins {
 		plugin.Describe(ch)
@@ -93,10 +94,10 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 }
 
 // Collect 收集指标
-func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
+func (e *MachineInfoExporter) Collect(ch chan<- prometheus.Metric) {
 	// 收集机器基本信息
 	e.collectMachineInfo(ch)
-	
+
 	// 收集插件指标
 	for _, plugin := range e.plugins {
 		if plugin.Enabled() {
@@ -106,7 +107,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 }
 
 // collectMachineInfo 收集机器基本信息
-func (e *Exporter) collectMachineInfo(ch chan<- prometheus.Metric) {
+func (e *MachineInfoExporter) collectMachineInfo(ch chan<- prometheus.Metric) {
 	// 简化实现，实际应该获取真实的机器信息
 	ch <- prometheus.MustNewConstMetric(
 		e.hostnameDesc,
@@ -114,7 +115,7 @@ func (e *Exporter) collectMachineInfo(ch chan<- prometheus.Metric) {
 		1,
 		"default-hostname",
 	)
-	
+
 	ch <- prometheus.MustNewConstMetric(
 		e.biosInfoDesc,
 		prometheus.GaugeValue,
@@ -123,7 +124,7 @@ func (e *Exporter) collectMachineInfo(ch chan<- prometheus.Metric) {
 		"unknown-version",
 		"2024-01-01",
 	)
-	
+
 	ch <- prometheus.MustNewConstMetric(
 		e.systemVendorDesc,
 		prometheus.GaugeValue,

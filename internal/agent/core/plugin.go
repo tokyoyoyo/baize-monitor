@@ -1,6 +1,7 @@
-package plugins
+package core
 
 import (
+	"baize-monitor/pkg/constants"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -10,11 +11,11 @@ import (
 type Plugin interface {
 	Name() string
 	Description() string
-	Tool() string
+	Tools() []string
 	Parameters() []string
 	Interval() time.Duration
 	Execute() (interface{}, error)
-	LastExecutionStatus() ExecutionStatus
+	LastExecutionStatus() constants.ExecutionStatus
 	LastExecutionTime() time.Time
 	Enabled() bool
 	SetEnabled(bool)
@@ -23,17 +24,6 @@ type Plugin interface {
 	Collect(ch chan<- prometheus.Metric)
 	Describe(ch chan<- *prometheus.Desc)
 }
-
-// ExecutionStatus 执行状态类型
-type ExecutionStatus string
-
-const (
-	StatusPending  ExecutionStatus = "pending"
-	StatusRunning  ExecutionStatus = "running"
-	StatusSuccess  ExecutionStatus = "success"
-	StatusFailed   ExecutionStatus = "failed"
-	StatusDisabled ExecutionStatus = "disabled"
-)
 
 // PluginRegistry 插件注册表
 type PluginRegistry struct {
@@ -50,12 +40,6 @@ func NewPluginRegistry() *PluginRegistry {
 // Register 注册插件
 func (pr *PluginRegistry) Register(plugin Plugin) {
 	pr.plugins[plugin.Name()] = plugin
-}
-
-// GetPlugin 获取插件
-func (pr *PluginRegistry) GetPlugin(name string) (Plugin, bool) {
-	plugin, exists := pr.plugins[name]
-	return plugin, exists
 }
 
 // GetAllPlugins 获取所有插件

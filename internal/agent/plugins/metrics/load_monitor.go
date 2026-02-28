@@ -1,33 +1,34 @@
-package plugins
+package metrics
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
-	"baize-monitor/internal/agent/plugins"
+	"baize-monitor/pkg/constants"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // LoadMonitor 负载监控插件
 type LoadMonitor struct {
-	name              string
-	description       string
-	tool              string
-	parameters        []string
-	interval          time.Duration
-	enabled           bool
-	lastExecutionTime time.Time
-	lastExecutionStatus plugins.ExecutionStatus
+	name                string
+	description         string
+	tools               []string
+	parameters          []string
+	interval            time.Duration
+	enabled             bool
+	lastExecutionTime   time.Time
+	lastExecutionStatus constants.ExecutionStatus
 }
 
-// NewLoadMonitor 创建负载监控插件
-func NewLoadMonitor() *LoadMonitor {
+// newLoadMonitor 创建负载监控插件
+func newLoadMonitor() *LoadMonitor {
 	return &LoadMonitor{
 		name:                "load_monitor",
 		description:         "Monitor system load average",
-		tool:                "uptime",
+		tools:               []string{"uptime"},
 		parameters:          []string{},
 		interval:            30 * time.Second,
 		enabled:             true,
-		lastExecutionStatus: plugins.StatusPending,
+		lastExecutionStatus: constants.StatusPending,
 	}
 }
 
@@ -42,8 +43,8 @@ func (lm *LoadMonitor) Description() string {
 }
 
 // Tool 获取工具名称
-func (lm *LoadMonitor) Tool() string {
-	return lm.tool
+func (lm *LoadMonitor) Tools() []string {
+	return lm.tools
 }
 
 // Parameters 获取参数
@@ -58,9 +59,9 @@ func (lm *LoadMonitor) Interval() time.Duration {
 
 // Execute 执行插件
 func (lm *LoadMonitor) Execute() (interface{}, error) {
-	lm.lastExecutionStatus = plugins.StatusRunning
+	lm.lastExecutionStatus = constants.StatusRunning
 	lm.lastExecutionTime = time.Now()
-	
+
 	// 简化实现，实际应该解析uptime输出
 	result := map[string]interface{}{
 		"load_averages": map[string]float64{
@@ -70,13 +71,13 @@ func (lm *LoadMonitor) Execute() (interface{}, error) {
 		},
 		"collected_at": time.Now().Unix(),
 	}
-	
-	lm.lastExecutionStatus = plugins.StatusSuccess
+
+	lm.lastExecutionStatus = constants.StatusSuccess
 	return result, nil
 }
 
 // LastExecutionStatus 获取最后执行状态
-func (lm *LoadMonitor) LastExecutionStatus() plugins.ExecutionStatus {
+func (lm *LoadMonitor) LastExecutionStatus() constants.ExecutionStatus {
 	return lm.lastExecutionStatus
 }
 

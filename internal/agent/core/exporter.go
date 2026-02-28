@@ -1,8 +1,6 @@
 package core
 
 import (
-	"baize-monitor/internal/agent/plugins"
-
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -20,18 +18,33 @@ type Exporter interface {
 	Start() error
 	Stop() error
 
-	// 插件管理
-	RegisterPlugin(plugin plugins.Plugin) error
-	GetPlugins() []plugins.Plugin
+	GetPlugins() []Plugin
 }
 
-// ExecutionStatus 执行状态类型
-type ExecutionStatus string
+type ExporterRegistry struct {
+	exporters map[string]Exporter
+}
 
-const (
-	StatusPending  ExecutionStatus = "pending"
-	StatusRunning  ExecutionStatus = "running"
-	StatusSuccess  ExecutionStatus = "success"
-	StatusFailed   ExecutionStatus = "failed"
-	StatusDisabled ExecutionStatus = "disabled"
+// NewExporterRegistry 创建Exporter注册表
+func NewExporterRegistry() *ExporterRegistry {
+	return &ExporterRegistry{
+		exporters: make(map[string]Exporter),
+	}
+}
+
+func (r *ExporterRegistry) Register(exporter Exporter) {
+	r.exporters[exporter.Name()] = exporter
+}
+
+func (r *ExporterRegistry) GetAllExporters() []Exporter {
+	var exporters []Exporter
+	for _, exporter := range r.exporters {
+		exporters = append(exporters, exporter)
+	}
+	return exporters
+}
+
+// Global exporter registry
+var (
+	GlobalExporterRegistry = NewExporterRegistry()
 )

@@ -8,13 +8,12 @@ import (
 
 	"github.com/spf13/viper"
 
-	"baize-monitor/internal/agent/core"
+	"baize-monitor/internal/agent"
 
 	// 强制导入插件包以触发自动注册
-	_ "baize-monitor/internal/agent/exporters/anomaly/plugins"
-	_ "baize-monitor/internal/agent/exporters/hardware/plugins"
-	_ "baize-monitor/internal/agent/exporters/machine_info/plugins"
-	_ "baize-monitor/internal/agent/exporters/metrics/plugins"
+
+	_ "baize-monitor/internal/agent/exporters"
+	_ "baize-monitor/internal/agent/plugins"
 )
 
 func main() {
@@ -27,7 +26,7 @@ func main() {
 	}
 
 	// 创建Agent实例
-	agent := core.NewAgent(config)
+	agent := agent.NewAgent(config)
 
 	// 运行Agent
 	if err := agent.Run(); err != nil {
@@ -36,7 +35,7 @@ func main() {
 }
 
 // loadConfig 加载配置
-func loadConfig() (*core.AgentConfig, error) {
+func loadConfig() (*agent.AgentConfig, error) {
 	// 设置默认配置
 	viper.SetDefault("server_url", "http://localhost:9988")
 	viper.SetDefault("heartbeat_interval", 30)
@@ -65,7 +64,7 @@ func loadConfig() (*core.AgentConfig, error) {
 	}
 
 	// 创建配置结构体
-	config := &core.AgentConfig{
+	config := &agent.AgentConfig{
 		ServerURL:         viper.GetString("server_url"),
 		HeartbeatInterval: time.Duration(viper.GetInt64("heartbeat_interval")) * time.Second,
 		MetricsPort:       viper.GetInt("metrics_port"),

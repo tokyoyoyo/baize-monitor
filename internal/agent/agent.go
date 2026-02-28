@@ -1,4 +1,4 @@
-package core
+package agent
 
 import (
 	"context"
@@ -18,13 +18,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	// 导入各个Exporter
-	anomalyExporter "baize-monitor/internal/agent/exporters/anomaly"
-	hardwareExporter "baize-monitor/internal/agent/exporters/hardware"
-	machineExporter "baize-monitor/internal/agent/exporters/machine_info"
-	metricsExporter "baize-monitor/internal/agent/exporters/metrics"
 
 	// 导入插件接口
-	"baize-monitor/internal/agent/plugins"
+	"baize-monitor/internal/agent/core"
 )
 
 // AgentConfig Agent配置结构
@@ -40,7 +36,7 @@ type AgentConfig struct {
 type Agent struct {
 	config    *AgentConfig
 	registry  *prometheus.Registry
-	exporters map[string]Exporter
+	exporters map[string]core.Exporter
 	ctx       context.Context
 	cancel    context.CancelFunc
 	wg        sync.WaitGroup
@@ -59,14 +55,14 @@ func NewAgent(config *AgentConfig) *Agent {
 	return &Agent{
 		config:    config,
 		registry:  registry,
-		exporters: make(map[string]Exporter),
+		exporters: make(map[string]core.Exporter),
 		ctx:       ctx,
 		cancel:    cancel,
 	}
 }
 
 // RegisterExporter 注册Exporter
-func (a *Agent) RegisterExporter(name string, exporter Exporter) error {
+func (a *Agent) RegisterExporter(name string, exporter core.Exporter) error {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
@@ -101,7 +97,7 @@ func (a *Agent) UnregisterExporter(name string) error {
 }
 
 // GetExporter 获取Exporter
-func (a *Agent) GetExporter(name string) (Exporter, error) {
+func (a *Agent) GetExporter(name string) (core.Exporter, error) {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
 
@@ -115,86 +111,13 @@ func (a *Agent) GetExporter(name string) (Exporter, error) {
 
 // InitializeExporters 初始化所有Exporter并使用已注册的插件
 func (a *Agent) InitializeExporters() error {
-	log.Println("Initializing exporters with registered plugins...")
+	a.exporters = make(map[string]core.Exporter)
 
-	// 定义Exporter配置
-	exporterConfigs := []struct {
-		name    string
-		newFunc func() Exporter
-	}{
-		{
-			name:    "machine_info",
-			newFunc: func() Exporter { return machineExporter.NewExporter() },
-		},
-		{
-			name:    "hardware",
-			newFunc: func() Exporter { return hardwareExporter.NewExporter() },
-		},
-		{
-			name:    "metrics",
-			newFunc: func() Exporter { return metricsExporter.NewExporter() },
-		},
-		{
-			name:    "anomaly",
-			newFunc: func() Exporter { return anomalyExporter.NewExporter() },
-		},
+	for _, exporter := range core.GlobalExporterRegistry.GetAllExporters() {
+		log.Printf("Initializing exporter: %s", exporter.Name())
+		a.exporters[exporter.Name()] = exporter
 	}
 
-	// 依次初始化每个Exporter并加载其已注册的插件
-	for _, config := range exporterConfigs {
-		if err := a.initializeExporterWithRegisteredPlugins(config.name, config.newFunc); err != nil {
-			return fmt.Errorf("failed to initialize %s exporter: %w", config.name, err)
-		}
-	}
-
-	log.Printf("Initialized %d exporters with registered plugins", len(a.exporters))
-	return nil
-}
-
-// getRegisteredPluginsByExporter 根据Exporter类型获取已注册的插件
-func (a *Agent) getRegisteredPluginsByExporter(exporterName string) []plugins.Plugin {
-	switch exporterName {
-	case "machine_info":
-		return plugins.MachineInfoPlugins.GetAllPlugins()
-
-	case "hardware":
-		return plugins.HardwarePlugins.GetAllPlugins()
-
-	case "metrics":
-		return plugins.MetricsPlugins.GetAllPlugins()
-
-	case "anomaly":
-		return plugins.AnomalyPlugins.GetAllPlugins()
-
-	default:
-		log.Printf("Unknown exporter type: %s", exporterName)
-		return []plugins.Plugin{}
-	}
-}
-
-// initializeExporterWithRegisteredPlugins 初始化Exporter并加载已注册的插件
-func (a *Agent) initializeExporterWithRegisteredPlugins(name string, newFunc func() Exporter) error {
-	// 创建Exporter
-	exporter := newFunc()
-
-	// 注册Exporter
-	if err := a.RegisterExporter(name, exporter); err != nil {
-		return fmt.Errorf("failed to register exporter: %w", err)
-	}
-
-	// 获取对应类型的已注册插件
-	registeredPlugins := a.getRegisteredPluginsByExporter(name)
-
-	// 注册发现的插件
-	for _, plugin := range registeredPlugins {
-		if err := exporter.RegisterPlugin(plugin); err != nil {
-			log.Printf("Warning: failed to register plugin %s: %v", plugin.Name(), err)
-		} else {
-			log.Printf("Plugin registered: %s (%s)", plugin.Name(), plugin.Description())
-		}
-	}
-
-	log.Printf("Exporter %s initialized with %d registered plugins", name, len(registeredPlugins))
 	return nil
 }
 
@@ -355,7 +278,7 @@ func (a *Agent) handlePluginsAPI(w http.ResponseWriter, r *http.Request) {
 			allPlugins = append(allPlugins, map[string]interface{}{
 				"name":        plugin.Name(),
 				"description": plugin.Description(),
-				"tool":        plugin.Tool(),
+				"tools":       plugin.Tools(),
 				"enabled":     plugin.Enabled(),
 				"interval":    plugin.Interval().String(),
 				"last_status": string(plugin.LastExecutionStatus()),
