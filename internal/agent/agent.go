@@ -13,12 +13,12 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
+	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"baize-monitor/internal/agent/anomaly"
 	"baize-monitor/internal/agent/hardware"
-	"baize-monitor/internal/agent/machineinfo"
+	"baize-monitor/internal/agent/machine_info"
 	"baize-monitor/internal/agent/metrics"
 	"baize-monitor/pkg/dto/response"
 )
@@ -40,7 +40,7 @@ type Agent struct {
 	config      *AgentConfig
 	registry    *prometheus.Registry
 	metrics     *metrics.Metrics
-	machineInfo *machineinfo.MachineInfo
+	machineInfo *machine_info.MachineInfo
 	hardware    *hardware.Hardware
 	anomaly     *anomaly.Anomaly
 	ctx         context.Context
@@ -59,7 +59,7 @@ func NewAgent(config *AgentConfig) *Agent {
 		config:      config,
 		registry:    registry,
 		metrics:     metrics.New(),
-		machineInfo: machineinfo.New(),
+		machineInfo: machine_info.NewMachineInfo(),
 		hardware:    hardware.New(),
 		anomaly:     anomaly.New(),
 		ctx:         ctx,
@@ -71,13 +71,14 @@ func NewAgent(config *AgentConfig) *Agent {
 func (a *Agent) Start() error {
 	log.Printf("Starting BaiZe Agent on node: %s", a.config.NodeName)
 
-	// 启动所有模块
 	if err := a.metrics.Start(); err != nil {
 		return fmt.Errorf("failed to start metrics module: %w", err)
 	}
+	
 	if err := a.machineInfo.Start(); err != nil {
 		return fmt.Errorf("failed to start machine info module: %w", err)
 	}
+	
 	if err := a.hardware.Start(); err != nil {
 		return fmt.Errorf("failed to start hardware module: %w", err)
 	}
@@ -87,8 +88,8 @@ func (a *Agent) Start() error {
 
 	// 注册 metrics 到 Prometheus
 	a.registry.MustRegister(a.metrics)
-	a.registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
-	a.registry.MustRegister(collectors.NewGoCollector())
+	a.registry.MustRegister(promcollectors.NewProcessCollector(promcollectors.ProcessCollectorOpts{}))
+	a.registry.MustRegister(promcollectors.NewGoCollector())
 
 	// 启动 HTTP 服务器
 	if err := a.startHTTPServer(); err != nil {
