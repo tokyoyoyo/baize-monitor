@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,19 +12,21 @@ import (
 	"syscall"
 	"time"
 
-	"encoding/json"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	// 导入各个Exporter
-
-	// 导入插件接口
-	"baize-monitor/internal/agent/core"
+	"baize-monitor/internal/agent/anomaly"
+	"baize-monitor/internal/agent/hardware"
+	"baize-monitor/internal/agent/machineinfo"
+	"baize-monitor/internal/agent/metrics"
+	"baize-monitor/pkg/dto/response"
 )
 
-// AgentConfig Agent配置结构
+// startTime 记录 Agent 启动时间
+var startTime time.Time
+
+// AgentConfig Agent 配置结构
 type AgentConfig struct {
 	ServerURL         string        `yaml:"server_url"`
 	HeartbeatInterval time.Duration `yaml:"heartbeat_interval"`
@@ -32,152 +35,97 @@ type AgentConfig struct {
 	LogLevel          string        `yaml:"log_level"`
 }
 
-// Agent Agent核心结构
+// Agent Agent 核心结构
 type Agent struct {
-	config    *AgentConfig
-	registry  *prometheus.Registry
-	exporters map[string]core.Exporter
-	ctx       context.Context
-	cancel    context.CancelFunc
-	wg        sync.WaitGroup
-	mutex     sync.RWMutex
+	config      *AgentConfig
+	registry    *prometheus.Registry
+	metrics     *metrics.Metrics
+	machineInfo *machineinfo.MachineInfo
+	hardware    *hardware.Hardware
+	anomaly     *anomaly.Anomaly
+	ctx         context.Context
+	cancel      context.CancelFunc
+	wg          sync.WaitGroup
+	mutex       sync.RWMutex
 }
 
-// NewAgent 创建Agent实例
+// NewAgent 创建 Agent 实例
 func NewAgent(config *AgentConfig) *Agent {
-	// 记录启动时间
 	startTime = time.Now()
-
 	ctx, cancel := context.WithCancel(context.Background())
-
 	registry := prometheus.NewRegistry()
 
 	return &Agent{
-		config:    config,
-		registry:  registry,
-		exporters: make(map[string]core.Exporter),
-		ctx:       ctx,
-		cancel:    cancel,
+		config:      config,
+		registry:    registry,
+		metrics:     metrics.New(),
+		machineInfo: machineinfo.New(),
+		hardware:    hardware.New(),
+		anomaly:     anomaly.New(),
+		ctx:         ctx,
+		cancel:      cancel,
 	}
 }
 
-// RegisterExporter 注册Exporter
-func (a *Agent) RegisterExporter(name string, exporter core.Exporter) error {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	if _, exists := a.exporters[name]; exists {
-		return fmt.Errorf("exporter %s already registered", name)
-	}
-
-	if err := a.registry.Register(exporter); err != nil {
-		return fmt.Errorf("failed to register %s exporter: %w", name, err)
-	}
-
-	a.exporters[name] = exporter
-	log.Printf("Exporter registered: %s (%s)", name, exporter.Name())
-	return nil
-}
-
-// UnregisterExporter 注销Exporter
-func (a *Agent) UnregisterExporter(name string) error {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	exporter, exists := a.exporters[name]
-	if !exists {
-		return fmt.Errorf("exporter %s not found", name)
-	}
-
-	a.registry.Unregister(exporter)
-	delete(a.exporters, name)
-
-	log.Printf("Exporter unregistered: %s", name)
-	return nil
-}
-
-// GetExporter 获取Exporter
-func (a *Agent) GetExporter(name string) (core.Exporter, error) {
-	a.mutex.RLock()
-	defer a.mutex.RUnlock()
-
-	exporter, exists := a.exporters[name]
-	if !exists {
-		return nil, fmt.Errorf("exporter %s not found", name)
-	}
-
-	return exporter, nil
-}
-
-// InitializeExporters 初始化所有Exporter并使用已注册的插件
-func (a *Agent) InitializeExporters() error {
-	a.exporters = make(map[string]core.Exporter)
-
-	for _, exporter := range core.GlobalExporterRegistry.GetAllExporters() {
-		log.Printf("Initializing exporter: %s", exporter.Name())
-		a.exporters[exporter.Name()] = exporter
-	}
-
-	return nil
-}
-
-// Start 启动Agent
+// Start 启动 Agent
 func (a *Agent) Start() error {
 	log.Printf("Starting BaiZe Agent on node: %s", a.config.NodeName)
 
-	// 初始化Exporter
-	if err := a.InitializeExporters(); err != nil {
-		return fmt.Errorf("failed to initialize exporters: %w", err)
+	// 启动所有模块
+	if err := a.metrics.Start(); err != nil {
+		return fmt.Errorf("failed to start metrics module: %w", err)
+	}
+	if err := a.machineInfo.Start(); err != nil {
+		return fmt.Errorf("failed to start machine info module: %w", err)
+	}
+	if err := a.hardware.Start(); err != nil {
+		return fmt.Errorf("failed to start hardware module: %w", err)
+	}
+	if err := a.anomaly.Start(); err != nil {
+		return fmt.Errorf("failed to start anomaly module: %w", err)
 	}
 
-	// 启动所有Exporter
-	a.mutex.RLock()
-	for name, exporter := range a.exporters {
-		if err := exporter.Start(); err != nil {
-			a.mutex.RUnlock()
-			return fmt.Errorf("failed to start %s exporter: %w", name, err)
-		}
-		log.Printf("Exporter started: %s", name)
-	}
-	a.mutex.RUnlock()
+	// 注册 metrics 到 Prometheus
+	a.registry.MustRegister(a.metrics)
+	a.registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	a.registry.MustRegister(collectors.NewGoCollector())
 
-	// 启动指标服务器
-	if err := a.startMetricsServer(); err != nil {
-		return fmt.Errorf("failed to start metrics server: %w", err)
+	// 启动 HTTP 服务器
+	if err := a.startHTTPServer(); err != nil {
+		return fmt.Errorf("failed to start HTTP server: %w", err)
 	}
 
 	log.Println("Agent started successfully")
 	return nil
 }
 
-// startMetricsServer 启动指标服务器
-func (a *Agent) startMetricsServer() error {
-	// 注册默认收集器
-	a.registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
-	a.registry.MustRegister(collectors.NewGoCollector())
-
-	// 创建HTTP处理器
-	handler := promhttp.HandlerFor(a.registry, promhttp.HandlerOpts{
-		EnableOpenMetrics: true,
-	})
-
-	// 启动HTTP服务器（goroutine中运行）
+// startHTTPServer 启动 HTTP 服务器
+func (a *Agent) startHTTPServer() error {
 	a.wg.Add(1)
 	go func() {
 		defer a.wg.Done()
 
 		mux := http.NewServeMux()
-		mux.Handle("/metrics", handler)
+
+		// Prometheus metrics 端点
+		mux.Handle("/metrics", promhttp.HandlerFor(a.registry, promhttp.HandlerOpts{
+			EnableOpenMetrics: true,
+		}))
+
+		// 健康检查
 		mux.HandleFunc("/health", a.healthHandler)
-		mux.HandleFunc("/api/v1/plugins", a.handlePluginsAPI)
-		mux.HandleFunc("/api/v1/plugin/control", a.handlePluginControlAPI)
+
+		// 信息模块 API 端点
+		mux.HandleFunc("/api/v1/machine-info", a.machineInfoHandler)
+		mux.HandleFunc("/api/v1/hardware", a.hardwareHandler)
+		mux.HandleFunc("/api/v1/anomaly", a.anomalyHandler)
 
 		server := &http.Server{
 			Addr:    fmt.Sprintf(":%d", a.config.MetricsPort),
 			Handler: mux,
 		}
 
-		fmt.Printf("Metrics server listening on :%d\n", a.config.MetricsPort)
+		fmt.Printf("HTTP server listening on :%d\n", a.config.MetricsPort)
 
 		go func() {
 			<-a.ctx.Done()
@@ -187,7 +135,7 @@ func (a *Agent) startMetricsServer() error {
 		}()
 
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Printf("Metrics server error: %v\n", err)
+			fmt.Printf("HTTP server error: %v\n", err)
 		}
 	}()
 
@@ -198,53 +146,104 @@ func (a *Agent) startMetricsServer() error {
 func (a *Agent) healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// 计算运行时间
-	uptime := time.Since(startTime).String()
-
-	// 构造健康检查响应
-	response := map[string]interface{}{
-		"timestamp":    time.Now().Format(time.RFC3339),
-		"node_name":    a.config.NodeName,
-		"status":       "healthy",
-		"uptime":       uptime,
-		"version":      "1.0.0",
-		"metrics_port": a.config.MetricsPort,
+	resp := response.SuccessResponse{
+		Code:    200,
+		Success: true,
+		Message: "healthy",
+		Data: map[string]interface{}{
+			"timestamp":    time.Now().Format(time.RFC3339),
+			"node_name":    a.config.NodeName,
+			"uptime":       time.Since(startTime).String(),
+			"version":      "1.0.0",
+			"metrics_port": a.config.MetricsPort,
+		},
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(resp)
 }
 
-// 添加全局变量记录启动时间
-var startTime time.Time
+// dataProvider 数据提供者接口
+type dataProvider interface {
+	GetData() (interface{}, error)
+}
 
-// Stop 停止Agent
+// writeJSONResponse 写入 JSON 响应
+func writeJSONResponse(w http.ResponseWriter, statusCode int, resp interface{}) {
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(resp)
+}
+
+// handleDataRequest 处理数据请求
+func (a *Agent) handleDataRequest(w http.ResponseWriter, provider dataProvider) {
+	w.Header().Set("Content-Type", "application/json")
+
+	data, err := provider.GetData()
+	if err != nil {
+		resp := response.ErrorResponse{
+			Code:    500,
+			Success: false,
+			Message: err.Error(),
+		}
+		writeJSONResponse(w, http.StatusInternalServerError, resp)
+		return
+	}
+
+	resp := response.SuccessResponse{
+		Code:    200,
+		Success: true,
+		Message: "success",
+		Data:    data,
+	}
+
+	writeJSONResponse(w, http.StatusOK, resp)
+}
+
+// machineInfoHandler 机器信息处理器
+func (a *Agent) machineInfoHandler(w http.ResponseWriter, r *http.Request) {
+	a.handleDataRequest(w, a.machineInfo)
+}
+
+// hardwareHandler 硬件信息处理器
+func (a *Agent) hardwareHandler(w http.ResponseWriter, r *http.Request) {
+	a.handleDataRequest(w, a.hardware)
+}
+
+// anomalyHandler 异常检测处理器
+func (a *Agent) anomalyHandler(w http.ResponseWriter, r *http.Request) {
+	a.handleDataRequest(w, a.anomaly)
+}
+
+// Stop 停止 Agent
 func (a *Agent) Stop() {
 	log.Println("Shutting down Agent...")
 
-	// 停止所有Exporter
-	a.mutex.RLock()
-	for name, exporter := range a.exporters {
-		if err := exporter.Stop(); err != nil {
-			log.Printf("Error stopping %s exporter: %v", name, err)
-		} else {
-			log.Printf("Exporter stopped: %s", name)
-		}
+	// 停止所有模块
+	if err := a.metrics.Stop(); err != nil {
+		log.Printf("Error stopping metrics module: %v", err)
 	}
-	a.mutex.RUnlock()
+	if err := a.machineInfo.Stop(); err != nil {
+		log.Printf("Error stopping machine info module: %v", err)
+	}
+	if err := a.hardware.Stop(); err != nil {
+		log.Printf("Error stopping hardware module: %v", err)
+	}
+	if err := a.anomaly.Stop(); err != nil {
+		log.Printf("Error stopping anomaly module: %v", err)
+	}
 
 	// 取消上下文
 	a.cancel()
 
-	// 等待所有goroutine结束
+	// 等待所有 goroutine 结束
 	a.wg.Wait()
 
 	log.Println("Agent shutdown complete")
 }
 
-// Run 运行Agent主循环
+// Run 运行 Agent 主循环
 func (a *Agent) Run() error {
-	// 启动Agent
+	// 启动 Agent
 	if err := a.Start(); err != nil {
 		return err
 	}
@@ -260,121 +259,7 @@ func (a *Agent) Run() error {
 		log.Println("Context cancelled")
 	}
 
-	// 停止Agent
+	// 停止 Agent
 	a.Stop()
 	return nil
-}
-
-// handlePluginsAPI 处理插件列表API
-func (a *Agent) handlePluginsAPI(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	// 收集所有插件信息
-	var allPlugins []map[string]interface{}
-
-	a.mutex.RLock()
-	for _, exporter := range a.exporters {
-		for _, plugin := range exporter.GetPlugins() {
-			allPlugins = append(allPlugins, map[string]interface{}{
-				"name":        plugin.Name(),
-				"description": plugin.Description(),
-				"tools":       plugin.Tools(),
-				"enabled":     plugin.Enabled(),
-				"interval":    plugin.Interval().String(),
-				"last_status": string(plugin.LastExecutionStatus()),
-				"last_time":   plugin.LastExecutionTime().Format(time.RFC3339),
-			})
-		}
-	}
-	a.mutex.RUnlock()
-
-	response := map[string]interface{}{
-		"plugins": allPlugins,
-		"count":   len(allPlugins),
-	}
-
-	json.NewEncoder(w).Encode(response)
-}
-
-// handlePluginControlAPI 处理插件控制API
-func (a *Agent) handlePluginControlAPI(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var req struct {
-		Action string `json:"action"` // enable, disable, list
-		Name   string `json:"name"`   // plugin name
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	switch req.Action {
-	case "enable":
-		// 启用插件逻辑
-		a.enablePlugin(req.Name)
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"status": "enabled", "plugin": req.Name})
-
-	case "disable":
-		// 禁用插件逻辑
-		a.disablePlugin(req.Name)
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"status": "disabled", "plugin": req.Name})
-
-	case "list":
-		// 列出插件逻辑已在handlePluginsAPI中实现
-		http.Redirect(w, r, "/api/v1/plugins", http.StatusSeeOther)
-
-	default:
-		http.Error(w, "Invalid action", http.StatusBadRequest)
-	}
-}
-
-// enablePlugin 启用插件
-func (a *Agent) enablePlugin(pluginName string) {
-	a.mutex.RLock()
-	defer a.mutex.RUnlock()
-
-	for _, exporter := range a.exporters {
-		for _, plugin := range exporter.GetPlugins() {
-			if plugin.Name() == pluginName {
-				plugin.SetEnabled(true)
-				log.Printf("Plugin enabled via API: %s", pluginName)
-				return
-			}
-		}
-	}
-}
-
-// disablePlugin 禁用插件
-func (a *Agent) disablePlugin(pluginName string) {
-	a.mutex.RLock()
-	defer a.mutex.RUnlock()
-
-	for _, exporter := range a.exporters {
-		for _, plugin := range exporter.GetPlugins() {
-			if plugin.Name() == pluginName {
-				plugin.SetEnabled(false)
-				log.Printf("Plugin disabled via API: %s", pluginName)
-				return
-			}
-		}
-	}
-}
-
-// GetRegistry 获取指标注册表
-func (a *Agent) GetRegistry() *prometheus.Registry {
-	return a.registry
-}
-
-// GetConfig 获取配置
-func (a *Agent) GetConfig() *AgentConfig {
-	return a.config
 }

@@ -9,11 +9,6 @@ import (
 	"github.com/spf13/viper"
 
 	"baize-monitor/internal/agent"
-
-	// 强制导入插件包以触发自动注册
-
-	_ "baize-monitor/internal/agent/exporters"
-	_ "baize-monitor/internal/agent/plugins"
 )
 
 func main() {
