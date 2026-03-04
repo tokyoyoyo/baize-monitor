@@ -6,11 +6,10 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/gosnmp/gosnmp v1.42.1
 	github.com/prometheus/client_golang v1.19.1
+	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.40.0
-	golang.org/x/time v0.14.0
-	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
@@ -50,7 +49,7 @@ require (
 	github.com/quic-go/quic-go v0.54.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
+	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect

@@ -74,11 +74,11 @@ func (a *Agent) Start() error {
 	if err := a.metrics.Start(); err != nil {
 		return fmt.Errorf("failed to start metrics module: %w", err)
 	}
-	
+
 	if err := a.machineInfo.Start(); err != nil {
 		return fmt.Errorf("failed to start machine info module: %w", err)
 	}
-	
+
 	if err := a.hardware.Start(); err != nil {
 		return fmt.Errorf("failed to start hardware module: %w", err)
 	}
