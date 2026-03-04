@@ -1,6 +1,7 @@
 package models
 
 import (
+	"net"
 	"time"
 )
 
@@ -12,8 +13,8 @@ type MachineInfo struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"column:updated_at"` 
 	
 	// 基础信息
-	TargetIP string `json:"target_ip" gorm:"size:45;index"` // 服务端上传的管理IP地址
-	Hostname string `json:"hostname" gorm:"size:255"`     // 机器主机名
+	TargetIP net.IP `json:"target_ip" gorm:"type:inet;index;not null"` // 服务端上传的管理IP地址，使用PostgreSQL inet类型
+	Hostname string `json:"hostname" gorm:"size:255"`                   // 机器主机名
 	
 	// 网络信息
 	IPAddresses map[string][]string `json:"ip_addresses" gorm:"type:jsonb;not null;default:'{}';serializer:json"` // 网卡名称到IP地址列表的映射，使用JSONB存储
