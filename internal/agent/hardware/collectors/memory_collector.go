@@ -24,77 +24,72 @@ func NewMemoryCollector() *MemoryCollector {
 
 // Collect 收集内存信息并填充到 hardwareInfo
 func (m *MemoryCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) {
-	// 初始化内存信息
-	hardwareInfo.Memory = &hardwareRequest.MemoryCreateRequest{}
+	memoryRequest := hardwareRequest.MemoryRequest{
+		Content: make([]hardwareRequest.MemoryModuleInfo, 0),
+		Summary: hardwareRequest.MemorySummary{},
+	}
 
 	// 获取虚拟内存信息
 	memInfo, err := mem.VirtualMemory()
 	if err != nil {
-		hardwareInfo.Memory.Success = false
-		hardwareInfo.Memory.Message = fmt.Sprintf("failed to get memory info: %v", err)
+		memoryRequest.Success = false
+		memoryRequest.Message = fmt.Sprintf("failed to get memory info: %v", err)
+		hardwareInfo.Memory = &memoryRequest
 		return
 	}
 
 	// 设置总内存信息
-	hardwareInfo.Memory.TotalSize = int64(memInfo.Total)
+	memoryRequest.Summary.TotalSize = int64(memInfo.Total)
 
 	// 根据操作系统选择不同的采集方式
-	var moduleErr error
 	if runtime.GOOS == "linux" {
 		// 在 Linux 上使用 dmidecode 获取详细信息
-		moduleErr = m.collectMemoryModulesLinux(hardwareInfo)
+		moduleErr := m.collectMemoryModulesLinux(&memoryRequest)
+		if moduleErr != nil {
+			memoryRequest.Success = false
+			memoryRequest.Message = fmt.Sprintf("partial collection failed: %v", moduleErr)
+		}
 	} else {
 		// 其他系统使用通用方法
-		moduleErr = m.collectMemoryModulesGeneric(hardwareInfo)
+		m.collectMemoryModulesGeneric(&memoryRequest)
 	}
 
-	// 处理内存模块采集错误
-	if moduleErr != nil {
-		// 如果已收集到内存模块信息，将失败信息记录到主内存信息中
-		if len(hardwareInfo.MemoryModules) > 0 {
-			hardwareInfo.Memory.Success = false
-			hardwareInfo.Memory.Message = fmt.Sprintf("partial collection failed: %v", moduleErr)
-			// 将失败信息也更新到所有内存模块
-			for i := range hardwareInfo.MemoryModules {
-				hardwareInfo.MemoryModules[i].Success = false
-				hardwareInfo.MemoryModules[i].Message = fmt.Sprintf("%s; collection failed: %v", hardwareInfo.MemoryModules[i].Message, moduleErr)
-			}
-		} else {
-			// 没有收集到内存模块信息，记录失败到主内存信息
-			hardwareInfo.Memory.Success = false
-			hardwareInfo.Memory.Message = fmt.Sprintf("memory module collection failed: %v", moduleErr)
-		}
+	// 如果采集成功但没有设置 Success 字段
+	if !memoryRequest.Success && memoryRequest.Message == "" {
+		memoryRequest.Success = true
+		memoryRequest.Message = "collected successfully"
 	}
+
+	hardwareInfo.Memory = &memoryRequest
 }
 
 // collectMemoryModulesLinux 在 Linux 上使用 dmidecode 收集内存条信息
-func (m *MemoryCollector) collectMemoryModulesLinux(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) error {
+func (m *MemoryCollector) collectMemoryModulesLinux(memoryRequest *hardwareRequest.MemoryRequest) error {
 	// 使用 dmidecode 获取内存信息
 	cmd := exec.Command("dmidecode", "-t", "memory")
 	output, err := cmd.Output()
 	if err != nil {
 		// dmidecode 需要 root 权限，如果没有权限则使用通用方法
-		return fmt.Errorf("dmidecode failed: %v", err)
+		m.collectMemoryModulesGeneric(memoryRequest)
+		return nil
 	}
 
 	// 解析 dmidecode 输出
 	modules := parseDmiDecodeMemory(string(output))
 
 	// 统计信息
-	var totalSlots int
 	var memoryType string
 	var memorySpeed string
 	typeCount := make(map[string]int)
 	speedCount := make(map[string]int)
 
 	for i := range modules {
-		// 设置内存条执行状态
 		modules[i].Success = true
 		modules[i].Message = "collected via dmidecode"
-		hardwareInfo.MemoryModules = append(hardwareInfo.MemoryModules, modules[i])
+		memoryRequest.Content = append(memoryRequest.Content, modules[i])
 
 		if modules[i].Size > 0 {
-			totalSlots++
+			memoryRequest.Summary.UsedSlots++
 			typeCount[modules[i].Type]++
 			speedCount[modules[i].Speed]++
 		}
@@ -124,18 +119,16 @@ func (m *MemoryCollector) collectMemoryModulesLinux(hardwareInfo *hardwareReques
 		memorySpeed = "Unknown"
 	}
 
-	hardwareInfo.Memory.Type = memoryType
-	hardwareInfo.Memory.Speed = memorySpeed
-	hardwareInfo.Memory.Slots = totalSlots
-	hardwareInfo.Memory.Success = true
-	hardwareInfo.Memory.Message = "collected via dmidecode"
+	memoryRequest.Summary.Type = memoryType
+	memoryRequest.Summary.Speed = memorySpeed
+	memoryRequest.Summary.TotalSlots = memoryRequest.Summary.UsedSlots
 	return nil
 }
 
 // parseDmiDecodeMemory 解析 dmidecode 内存输出
-func parseDmiDecodeMemory(output string) []hardwareRequest.MemoryModuleCreateRequest {
-	var modules []hardwareRequest.MemoryModuleCreateRequest
-	var currentModule *hardwareRequest.MemoryModuleCreateRequest
+func parseDmiDecodeMemory(output string) []hardwareRequest.MemoryModuleInfo {
+	var modules []hardwareRequest.MemoryModuleInfo
+	var currentModule *hardwareRequest.MemoryModuleInfo
 
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	inMemoryDevice := false
@@ -157,7 +150,7 @@ func parseDmiDecodeMemory(output string) []hardwareRequest.MemoryModuleCreateReq
 			if currentModule != nil {
 				modules = append(modules, *currentModule)
 			}
-			currentModule = &hardwareRequest.MemoryModuleCreateRequest{
+			currentModule = &hardwareRequest.MemoryModuleInfo{
 				Type:  "Unknown",
 				Speed: "Unknown",
 			}
@@ -226,12 +219,13 @@ func parseDmiDecodeMemory(output string) []hardwareRequest.MemoryModuleCreateReq
 }
 
 // collectMemoryModulesGeneric 通用方法收集内存条信息
-func (m *MemoryCollector) collectMemoryModulesGeneric(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) error {
-	// 尝试读取 /proc/meminfo 获取基本信息
-	hardwareInfo.Memory.Type = "Unknown"
-	hardwareInfo.Memory.Speed = "Unknown"
-	hardwareInfo.Memory.Slots = 0
-	hardwareInfo.Memory.Success = true
-	hardwareInfo.Memory.Message = "collected via generic method (limited info)"
-	return nil
+func (m *MemoryCollector) collectMemoryModulesGeneric(memoryRequest *hardwareRequest.MemoryRequest) {
+	memoryRequest.Summary.Type = "Unknown"
+	memoryRequest.Summary.Speed = "Unknown"
+	memoryRequest.Summary.TotalSlots = 0
+	memoryRequest.Summary.UsedSlots = 0
+	if memoryRequest.Message == "" {
+		memoryRequest.Success = true
+		memoryRequest.Message = "collected via generic method (limited info)"
+	}
 }

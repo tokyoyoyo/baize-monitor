@@ -24,56 +24,43 @@ func NewCPUCollector() *CPUCollector {
 
 // Collect 收集 CPU 信息并填充到 hardwareInfo
 func (c *CPUCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) {
+	cpuRequest := hardwareRequest.CPURequest{
+		Content: make([]hardwareRequest.CPUInfo, 0),
+		Summary: hardwareRequest.CPUSummary{},
+	}
+
 	// 根据操作系统选择不同的采集方式
 	if runtime.GOOS == "linux" {
 		// 在 Linux 上优先使用 dmidecode 获取详细信息
-		dmidecodeErr := c.collectCPULinux(hardwareInfo)
+		dmidecodeErr := c.collectCPULinux(&cpuRequest)
 		if dmidecodeErr != nil {
 			// 如果 dmidecode 失败，回退到 gopsutil
-			gopsutilErr := c.collectCPUGeneric(hardwareInfo)
+			gopsutilErr := c.collectCPUGeneric(&cpuRequest)
 			if gopsutilErr != nil {
-				// 两者都失败，检查是否已收集到 CPU 信息
-				if len(hardwareInfo.CPUs) > 0 {
-					// 已收集到 CPU 信息，将失败信息添加到所有 CPU
-					failureMsg := fmt.Sprintf("partial collection failed: dmidecode failed(%v), gopsutil also failed(%v)", dmidecodeErr, gopsutilErr)
-					for i := range hardwareInfo.CPUs {
-						hardwareInfo.CPUs[i].Success = false
-						hardwareInfo.CPUs[i].Message = failureMsg
-					}
-				} else {
-					// 没有收集到 CPU 信息，创建专门的失败记录
-					hardwareInfo.CPUs = append(hardwareInfo.CPUs, hardwareRequest.CPUCreateRequest{
-						Success: false,
-						Message: fmt.Sprintf("failed to collect CPU info: dmidecode failed(%v), gopsutil also failed(%v)", dmidecodeErr, gopsutilErr),
-					})
-				}
+				// 两者都失败
+				cpuRequest.Success = false
+				cpuRequest.Message = fmt.Sprintf("failed to collect CPU info: dmidecode failed(%v), gopsutil also failed(%v)", dmidecodeErr, gopsutilErr)
 			}
 		}
-		return
+	} else {
+		// 其他系统使用通用方法
+		if err := c.collectCPUGeneric(&cpuRequest); err != nil {
+			cpuRequest.Success = false
+			cpuRequest.Message = fmt.Sprintf("failed to collect CPU info: %v", err)
+		}
 	}
 
-	// 其他系统使用通用方法
-	if err := c.collectCPUGeneric(hardwareInfo); err != nil {
-		// 采集失败，检查是否已收集到 CPU 信息
-		if len(hardwareInfo.CPUs) > 0 {
-			// 已收集到 CPU 信息，将失败信息添加到所有 CPU
-			failureMsg := fmt.Sprintf("partial collection failed: %v", err)
-			for i := range hardwareInfo.CPUs {
-				hardwareInfo.CPUs[i].Success = false
-				hardwareInfo.CPUs[i].Message = failureMsg
-			}
-		} else {
-			// 没有收集到 CPU 信息，创建专门的失败记录
-			hardwareInfo.CPUs = append(hardwareInfo.CPUs, hardwareRequest.CPUCreateRequest{
-				Success: false,
-				Message: fmt.Sprintf("failed to collect CPU info: %v", err),
-			})
-		}
+	// 如果采集成功但没有设置 Success 字段
+	if !cpuRequest.Success && cpuRequest.Message == "" {
+		cpuRequest.Success = true
+		cpuRequest.Message = "collected successfully"
 	}
+
+	hardwareInfo.CPUs = append(hardwareInfo.CPUs, cpuRequest)
 }
 
 // collectCPULinux 在 Linux 上使用 dmidecode 收集 CPU 信息
-func (c *CPUCollector) collectCPULinux(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) error {
+func (c *CPUCollector) collectCPULinux(cpuRequest *hardwareRequest.CPURequest) error {
 	// 使用 dmidecode 获取处理器信息
 	cmd := exec.Command("dmidecode", "-t", "processor")
 	output, err := cmd.Output()
@@ -88,38 +75,40 @@ func (c *CPUCollector) collectCPULinux(hardwareInfo *hardwareRequest.HardwareInf
 		return fmt.Errorf("no CPU info from dmidecode")
 	}
 
-	// 设置成功状态
-	for i := range cpus {
-		cpus[i].Success = true
-		cpus[i].Message = "collected via dmidecode"
-	}
+	// 设置内容
+	cpuRequest.Content = cpus
 
-	hardwareInfo.CPUs = cpus
+	// 计算摘要
+	totalCores := 0
+	totalThreads := 0
+	for _, cpu := range cpus {
+		totalCores += cpu.Cores
+		totalThreads += cpu.Threads
+	}
+	cpuRequest.Summary.TotalCores = totalCores
+	cpuRequest.Summary.TotalThreads = totalThreads
+
 	return nil
 }
 
 // parseDmiDecodeCPU 解析 dmidecode CPU 输出
-func parseDmiDecodeCPU(output string) []hardwareRequest.CPUCreateRequest {
-	var cpus []hardwareRequest.CPUCreateRequest
-	var currentCPU *hardwareRequest.CPUCreateRequest
+func parseDmiDecodeCPU(output string) []hardwareRequest.CPUInfo {
+	var cpus []hardwareRequest.CPUInfo
+	var currentCPU *hardwareRequest.CPUInfo
 
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	inProcessor := false
 
 	// 正则表达式
-	socketRegex := regexp.MustCompile(`\s*Socket Designation:\s*(.+)`)
-	typeRegex := regexp.MustCompile(`\s*Type:\s*(.+)`)
-	familyRegex := regexp.MustCompile(`\s*Family:\s*(.+)`)
-	manufacturerRegex := regexp.MustCompile(`\s*Manufacturer:\s*(.+)`)
-	idRegex := regexp.MustCompile(`\s*ID:\s*(.+)`)
-	signatureRegex := regexp.MustCompile(`\s*Signature:\s*(.+)`)
-	flagsRegex := regexp.MustCompile(`\s*Flags:\s*(.+)`)
-	versionRegex := regexp.MustCompile(`\s*Version:\s*(.+)`)
 	maxSpeedRegex := regexp.MustCompile(`\s*Max Speed:\s*(.+)`)
 	currentSpeedRegex := regexp.MustCompile(`\s*Current Speed:\s*(.+)`)
 	coreCountRegex := regexp.MustCompile(`\s*Core Count:\s*(\d+)`)
-	coreEnabledRegex := regexp.MustCompile(`\s*Core Enabled:\s*(\d+)`)
 	threadCountRegex := regexp.MustCompile(`\s*Thread Count:\s*(\d+)`)
+	versionRegex := regexp.MustCompile(`\s*Version:\s*(.+)`)
+	manufacturerRegex := regexp.MustCompile(`\s*Manufacturer:\s*(.+)`)
+	familyRegex := regexp.MustCompile(`\s*Family:\s*(.+)`)
+	idRegex := regexp.MustCompile(`\s*ID:\s*(.+)`)
+	flagsRegex := regexp.MustCompile(`\s*Flags:\s*(.+)`)
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -129,7 +118,7 @@ func parseDmiDecodeCPU(output string) []hardwareRequest.CPUCreateRequest {
 			if currentCPU != nil {
 				cpus = append(cpus, *currentCPU)
 			}
-			currentCPU = &hardwareRequest.CPUCreateRequest{
+			currentCPU = &hardwareRequest.CPUInfo{
 				Architecture: "Unknown",
 				BaseSpeed:    "Unknown",
 			}
@@ -141,24 +130,11 @@ func parseDmiDecodeCPU(output string) []hardwareRequest.CPUCreateRequest {
 			continue
 		}
 
-		// 解析插槽
-		if matches := socketRegex.FindStringSubmatch(line); len(matches) > 1 {
-			// Socket 信息可以存储在 Family 或其他字段
-		}
-
-		// 解析类型
-		if matches := typeRegex.FindStringSubmatch(line); len(matches) > 1 {
-			cpuType := strings.TrimSpace(matches[1])
-			if cpuType != "" && cpuType != "Central Processor" {
-				currentCPU.Family = cpuType
-			}
-		}
-
-		// 解析家族
-		if matches := familyRegex.FindStringSubmatch(line); len(matches) > 1 {
-			family := strings.TrimSpace(matches[1])
-			if family != "" && family != "Unknown" {
-				currentCPU.Family = family
+		// 解析版本（型号名称）
+		if matches := versionRegex.FindStringSubmatch(line); len(matches) > 1 {
+			version := strings.TrimSpace(matches[1])
+			if version != "" && version != "Not Specified" {
+				currentCPU.Model = version
 			}
 		}
 
@@ -170,19 +146,19 @@ func parseDmiDecodeCPU(output string) []hardwareRequest.CPUCreateRequest {
 			}
 		}
 
+		// 解析家族
+		if matches := familyRegex.FindStringSubmatch(line); len(matches) > 1 {
+			family := strings.TrimSpace(matches[1])
+			if family != "" && family != "Unknown" {
+				currentCPU.Family = family
+			}
+		}
+
 		// 解析 ID (包含 stepping 等信息)
 		if matches := idRegex.FindStringSubmatch(line); len(matches) > 1 {
 			id := strings.TrimSpace(matches[1])
 			if id != "" {
 				currentCPU.Stepping = id
-			}
-		}
-
-		// 解析版本（型号名称）
-		if matches := versionRegex.FindStringSubmatch(line); len(matches) > 1 {
-			version := strings.TrimSpace(matches[1])
-			if version != "" && version != "Not Specified" {
-				currentCPU.Model = version
 			}
 		}
 
@@ -197,7 +173,7 @@ func parseDmiDecodeCPU(output string) []hardwareRequest.CPUCreateRequest {
 		// 解析当前频率
 		if matches := currentSpeedRegex.FindStringSubmatch(line); len(matches) > 1 {
 			currentSpeed := strings.TrimSpace(matches[1])
-			if currentSpeed != "" && currentSpeed != "Unknown" && currentCPU.BaseSpeed == "Unknown" {
+			if currentSpeed != "" && currentCPU.BaseSpeed == "Unknown" {
 				currentCPU.BaseSpeed = currentSpeed
 			}
 		}
@@ -207,11 +183,6 @@ func parseDmiDecodeCPU(output string) []hardwareRequest.CPUCreateRequest {
 			if cores, err := strconv.Atoi(matches[1]); err == nil {
 				currentCPU.Cores = cores
 			}
-		}
-
-		// 解析启用核心数
-		if matches := coreEnabledRegex.FindStringSubmatch(line); len(matches) > 1 {
-			// 可以记录但当前结构没有对应字段
 		}
 
 		// 解析线程数
@@ -228,14 +199,6 @@ func parseDmiDecodeCPU(output string) []hardwareRequest.CPUCreateRequest {
 				currentCPU.Flags = flags
 			}
 		}
-
-		// 解析签名
-		if matches := signatureRegex.FindStringSubmatch(line); len(matches) > 1 {
-			signature := strings.TrimSpace(matches[1])
-			if signature != "" {
-				currentCPU.Flags = signature
-			}
-		}
 	}
 
 	// 添加最后一个 CPU
@@ -247,7 +210,7 @@ func parseDmiDecodeCPU(output string) []hardwareRequest.CPUCreateRequest {
 }
 
 // collectCPUGeneric 使用 gopsutil 收集 CPU 信息
-func (c *CPUCollector) collectCPUGeneric(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) error {
+func (c *CPUCollector) collectCPUGeneric(cpuRequest *hardwareRequest.CPURequest) error {
 	// 获取 CPU 信息
 	cpuInfos, err := cpu.Info()
 	if err != nil {
@@ -258,23 +221,20 @@ func (c *CPUCollector) collectCPUGeneric(hardwareInfo *hardwareRequest.HardwareI
 		return fmt.Errorf("no CPU info available")
 	}
 
+	// 获取物理核心数和逻辑核心数
+	physicalCores, err := cpu.Counts(false)
+	if err != nil {
+		physicalCores = 0
+	}
+
+	logicalCores, err := cpu.Counts(true)
+	if err != nil {
+		logicalCores = 0
+	}
+
 	// 遍历所有 CPU（支持多 CPU 系统）
 	for _, cpuInfo := range cpuInfos {
-		// 获取物理核心数
-		physicalCores, err := cpu.Counts(false)
-		if err != nil {
-			physicalCores = int(cpuInfo.Cores)
-		}
-
-		// 获取逻辑核心数
-		logicalCores, err := cpu.Counts(true)
-		if err != nil {
-			logicalCores = int(cpuInfo.Cores)
-		}
-
-		cpuRequest := hardwareRequest.CPUCreateRequest{
-			Success:  true,
-			Message:  "collected via gopsutil",
+		cpuInfo_request := hardwareRequest.CPUInfo{
 			Model:    cpuInfo.ModelName,
 			Vendor:   cpuInfo.VendorID,
 			Family:   cpuInfo.Family,
@@ -286,21 +246,25 @@ func (c *CPUCollector) collectCPUGeneric(hardwareInfo *hardwareRequest.HardwareI
 
 		// 处理频率信息
 		if cpuInfo.Mhz > 0 {
-			cpuRequest.BaseSpeed = fmt.Sprintf("%.2f MHz", cpuInfo.Mhz)
+			cpuInfo_request.BaseSpeed = fmt.Sprintf("%.2f MHz", cpuInfo.Mhz)
 		} else {
-			cpuRequest.BaseSpeed = "Unknown"
+			cpuInfo_request.BaseSpeed = "Unknown"
 		}
 
 		// 缓存大小信息（gopsutil 未直接提供，设置为未知）
-		cpuRequest.CacheSizeL1 = "Unknown"
-		cpuRequest.CacheSizeL2 = "Unknown"
-		cpuRequest.CacheSizeL3 = "Unknown"
+		cpuInfo_request.CacheSizeL1 = "Unknown"
+		cpuInfo_request.CacheSizeL2 = "Unknown"
+		cpuInfo_request.CacheSizeL3 = "Unknown"
 
 		// 架构信息（gopsutil 未直接提供，设置为未知）
-		cpuRequest.Architecture = "Unknown"
+		cpuInfo_request.Architecture = "Unknown"
 
-		hardwareInfo.CPUs = append(hardwareInfo.CPUs, cpuRequest)
+		cpuRequest.Content = append(cpuRequest.Content, cpuInfo_request)
 	}
+
+	// 计算摘要
+	cpuRequest.Summary.TotalCores = physicalCores
+	cpuRequest.Summary.TotalThreads = logicalCores
 
 	return nil
 }

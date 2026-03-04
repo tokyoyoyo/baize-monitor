@@ -18,19 +18,22 @@ func NewNetworkCollector() *NetworkCollector {
 
 // Collect 收集网络接口信息并填充到 hardwareInfo
 func (n *NetworkCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) {
+	networkRequest := hardwareRequest.NetworkInterfaceRequest{
+		Content: make([]hardwareRequest.NetworkInterfaceInfo, 0),
+		Summary: hardwareRequest.NetworkInterfaceSummary{},
+	}
+
 	// 获取网络接口信息
 	interfaces, err := net.Interfaces()
 	if err != nil {
-		// 采集失败，记录一个失败的网络接口条目
-		hardwareInfo.NetworkInterfaces = append(hardwareInfo.NetworkInterfaces, hardwareRequest.NetworkInterfaceCreateRequest{
-			Success: false,
-			Message: fmt.Sprintf("failed to get network interfaces: %v", err),
-		})
+		networkRequest.Success = false
+		networkRequest.Message = fmt.Sprintf("failed to get network interfaces: %v", err)
+		hardwareInfo.NetworkInterfaces = append(hardwareInfo.NetworkInterfaces, networkRequest)
 		return
 	}
 
 	for _, iface := range interfaces {
-		networkInterface := hardwareRequest.NetworkInterfaceCreateRequest{
+		networkInterface := hardwareRequest.NetworkInterfaceInfo{
 			Success:      true,
 			Message:      "collected successfully",
 			Name:         iface.Name,
@@ -53,12 +56,14 @@ func (n *NetworkCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUpl
 			strings.Contains(iface.Name, "veth") ||
 			strings.Contains(iface.Name, "br-") {
 			networkInterface.IsVirtual = true
+			networkRequest.Summary.VirtualCount++
+		} else {
+			networkRequest.Summary.PhysicalCount++
 		}
 
 		// 获取 IP 地址
 		addrs, err := iface.Addrs()
 		if err != nil {
-			networkInterface.Success = false
 			networkInterface.Message = fmt.Sprintf("%s; failed to get addresses: %v", networkInterface.Message, err)
 		} else {
 			for _, addr := range addrs {
@@ -72,6 +77,15 @@ func (n *NetworkCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUpl
 			}
 		}
 
-		hardwareInfo.NetworkInterfaces = append(hardwareInfo.NetworkInterfaces, networkInterface)
+		networkRequest.Content = append(networkRequest.Content, networkInterface)
+		networkRequest.Summary.TotalCount++
 	}
+
+	// 如果采集成功但没有设置 Success 字段
+	if !networkRequest.Success && networkRequest.Message == "" {
+		networkRequest.Success = true
+		networkRequest.Message = "collected successfully"
+	}
+
+	hardwareInfo.NetworkInterfaces = append(hardwareInfo.NetworkInterfaces, networkRequest)
 }

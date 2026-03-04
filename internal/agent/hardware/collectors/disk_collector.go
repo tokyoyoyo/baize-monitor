@@ -25,75 +25,64 @@ func NewDiskCollector() *DiskCollector {
 
 // Collect 收集磁盘信息并填充到 hardwareInfo
 func (d *DiskCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) {
+	diskRequest := hardwareRequest.DiskRequest{
+		Content: make([]hardwareRequest.DiskInfo, 0),
+		Summary: hardwareRequest.DiskSummary{},
+	}
+
 	// 根据操作系统选择不同的采集方式
 	var diskErr error
 	if runtime.GOOS == "linux" {
-		// 在 Linux 上使用 lsblk 和 smartctl 获取详细信息
-		diskErr = d.collectDisksLinux(hardwareInfo)
+		diskErr = d.collectDisksLinux(&diskRequest)
 	} else {
-		// 其他系统使用通用方法
-		diskErr = d.collectDisksGeneric(hardwareInfo)
+		diskErr = d.collectDisksGeneric(&diskRequest)
 	}
 
 	// 处理磁盘采集错误
 	if diskErr != nil {
-		// 如果已收集到磁盘信息，将失败信息添加到所有磁盘
-		if len(hardwareInfo.Disks) > 0 {
-			failureMsg := fmt.Sprintf("partial collection failed: %v", diskErr)
-			for i := range hardwareInfo.Disks {
-				hardwareInfo.Disks[i].Success = false
-				hardwareInfo.Disks[i].Message = failureMsg
-			}
-		} else {
-			// 没有收集到磁盘信息，创建专门的失败记录
-			hardwareInfo.Disks = append(hardwareInfo.Disks, hardwareRequest.DiskCreateRequest{
-				Success: false,
-				Message: fmt.Sprintf("disk collection failed: %v", diskErr),
-			})
-		}
-	} else if len(hardwareInfo.Disks) == 0 {
-		// 采集成功但没有找到任何磁盘
-		hardwareInfo.Disks = append(hardwareInfo.Disks, hardwareRequest.DiskCreateRequest{
-			Success: false,
-			Message: "no disk devices found",
-		})
+		diskRequest.Success = false
+		diskRequest.Message = fmt.Sprintf("disk collection failed: %v", diskErr)
 	}
 
 	// 收集分区信息（所有系统通用）
-	if err := d.collectPartitions(hardwareInfo); err != nil {
-		// 分区采集失败，将失败信息添加到所有磁盘（如果存在），否则添加一个专门的记录
-		if len(hardwareInfo.Disks) > 0 {
-			partitionFailureMsg := fmt.Sprintf("partition collection failed: %v", err)
-			for i := range hardwareInfo.Disks {
-				hardwareInfo.Disks[i].Success = false
-				hardwareInfo.Disks[i].Message = fmt.Sprintf("%s; %s", hardwareInfo.Disks[i].Message, partitionFailureMsg)
-			}
-		} else {
-			// 没有磁盘记录时，添加一个失败记录
-			hardwareInfo.Disks = append(hardwareInfo.Disks, hardwareRequest.DiskCreateRequest{
-				Success: false,
-				Message: fmt.Sprintf("partition collection failed: %v", err),
-			})
+	if partitionErr := d.collectPartitions(&diskRequest); partitionErr != nil {
+		if diskRequest.Success {
+			diskRequest.Success = false
+			diskRequest.Message = fmt.Sprintf("%s; partition collection failed: %v", diskRequest.Message, partitionErr)
 		}
 	}
+
+	// 如果采集成功但没有设置 Success 字段
+	if !diskRequest.Success && diskRequest.Message == "" {
+		diskRequest.Success = true
+		diskRequest.Message = "collected successfully"
+	}
+
+	// 检查是否有磁盘
+	if len(diskRequest.Content) == 0 && diskRequest.Message == "" {
+		diskRequest.Success = false
+		diskRequest.Message = "no disk devices found"
+	}
+
+	hardwareInfo.Disks = append(hardwareInfo.Disks, diskRequest)
 }
 
 // collectDisksLinux 在 Linux 上收集磁盘信息
-func (d *DiskCollector) collectDisksLinux(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) error {
+func (d *DiskCollector) collectDisksLinux(diskRequest *hardwareRequest.DiskRequest) error {
 	// 使用 lsblk 获取磁盘列表和基本信息
-	if err := d.collectLsblkInfo(hardwareInfo); err != nil {
+	if err := d.collectLsblkInfo(diskRequest); err != nil {
 		return err
 	}
 
 	// 使用 smartctl 获取更详细的信息
-	for i := range hardwareInfo.Disks {
-		d.enhanceWithSmartctl(&hardwareInfo.Disks[i], hardwareInfo)
+	for i := range diskRequest.Content {
+		d.enhanceWithSmartctl(&diskRequest.Content[i])
 	}
 	return nil
 }
 
 // collectLsblkInfo 使用 lsblk 获取磁盘信息
-func (d *DiskCollector) collectLsblkInfo(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) error {
+func (d *DiskCollector) collectLsblkInfo(diskRequest *hardwareRequest.DiskRequest) error {
 	// 使用 lsblk 获取 JSON 格式的输出
 	cmd := exec.Command("lsblk", "-J", "-o", "NAME,SIZE,TYPE,MODEL,VENDOR,ROTA,SERIAL,WWN")
 	output, err := cmd.Output()
@@ -125,7 +114,7 @@ func (d *DiskCollector) collectLsblkInfo(hardwareInfo *hardwareRequest.HardwareI
 			continue
 		}
 
-		diskInfo := hardwareRequest.DiskCreateRequest{
+		diskInfo := hardwareRequest.DiskInfo{
 			Success:      true,
 			Message:      "collected via lsblk",
 			Device:       "/dev/" + device.Name,
@@ -140,13 +129,22 @@ func (d *DiskCollector) collectLsblkInfo(hardwareInfo *hardwareRequest.HardwareI
 		// 解析容量
 		diskInfo.Size = d.parseSize(device.Size)
 
-		hardwareInfo.Disks = append(hardwareInfo.Disks, diskInfo)
+		diskRequest.Content = append(diskRequest.Content, diskInfo)
+
+		// 更新摘要
+		diskRequest.Summary.TotalCount++
+		diskRequest.Summary.TotalSize += diskInfo.Size
+		if diskInfo.Type == "SSD" {
+			diskRequest.Summary.SSDCount++
+		} else {
+			diskRequest.Summary.HDDCount++
+		}
 	}
 	return nil
 }
 
 // enhanceWithSmartctl 使用 smartctl 增强磁盘信息
-func (d *DiskCollector) enhanceWithSmartctl(diskInfo *hardwareRequest.DiskCreateRequest, hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) {
+func (d *DiskCollector) enhanceWithSmartctl(diskInfo *hardwareRequest.DiskInfo) {
 	// 使用 smartctl 获取详细信息
 	cmd := exec.Command("smartctl", "-i", diskInfo.Device)
 	output, err := cmd.Output()
@@ -279,7 +277,7 @@ func (d *DiskCollector) parseSize(sizeStr string) int64 {
 }
 
 // collectDisksGeneric 通用方法收集磁盘信息
-func (d *DiskCollector) collectDisksGeneric(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) error {
+func (d *DiskCollector) collectDisksGeneric(diskRequest *hardwareRequest.DiskRequest) error {
 	// 获取磁盘 IO 统计信息来获取磁盘列表
 	ioCounters, err := disk.IOCounters()
 	if err != nil {
@@ -287,14 +285,14 @@ func (d *DiskCollector) collectDisksGeneric(hardwareInfo *hardwareRequest.Hardwa
 	}
 
 	// 收集磁盘信息
-	for name := range ioCounters {
-		diskInfo := hardwareRequest.DiskCreateRequest{
+	for name, ioCounter := range ioCounters {
+		diskInfo := hardwareRequest.DiskInfo{
 			Success:      true,
 			Message:      "collected via gopsutil",
 			Device:       "/dev/" + name,
 			Model:        name,
 			Type:         "Unknown",
-			Size:         0,
+			Size:         int64(ioCounter.ReadBytes + ioCounter.WriteBytes), // 估算值
 			SerialNumber: "",
 			Firmware:     "",
 			RPM:          0,
@@ -303,13 +301,15 @@ func (d *DiskCollector) collectDisksGeneric(hardwareInfo *hardwareRequest.Hardwa
 			Vendor:       "",
 		}
 
-		hardwareInfo.Disks = append(hardwareInfo.Disks, diskInfo)
+		diskRequest.Content = append(diskRequest.Content, diskInfo)
+		diskRequest.Summary.TotalCount++
+		diskRequest.Summary.TotalSize += diskInfo.Size
 	}
 	return nil
 }
 
-// collectPartitions 收集分区信息
-func (d *DiskCollector) collectPartitions(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) error {
+// collectPartitions 收集分区信息并添加到对应的磁盘对象中
+func (d *DiskCollector) collectPartitions(diskRequest *hardwareRequest.DiskRequest) error {
 	// 获取磁盘分区信息
 	partitions, err := disk.Partitions(false)
 	if err != nil {
@@ -318,7 +318,7 @@ func (d *DiskCollector) collectPartitions(hardwareInfo *hardwareRequest.Hardware
 
 	// 收集分区信息
 	for _, partition := range partitions {
-		diskPartition := hardwareRequest.DiskPartitionCreateRequest{
+		diskPartition := hardwareRequest.DiskPartitionInfo{
 			Success:    true,
 			Message:    "collected via gopsutil",
 			Device:     partition.Device,
@@ -338,8 +338,30 @@ func (d *DiskCollector) collectPartitions(hardwareInfo *hardwareRequest.Hardware
 			diskPartition.Message = fmt.Sprintf("collected via gopsutil; failed to get size: %v", err)
 		}
 
-		hardwareInfo.Partitions = append(hardwareInfo.Partitions, diskPartition)
+		// 找到对应的磁盘并添加分区
+		for i := range diskRequest.Content {
+			if d.isPartitionOfDisk(partition.Device, diskRequest.Content[i].Device) {
+				diskRequest.Content[i].Partitions = append(diskRequest.Content[i].Partitions, diskPartition)
+				diskRequest.Summary.TotalPartitions++
+				break
+			}
+		}
 	}
 
 	return nil
+}
+
+// isPartitionOfDisk 判断分区是否属于某个磁盘
+func (d *DiskCollector) isPartitionOfDisk(partitionDevice, diskDevice string) bool {
+	// 简化判断：如果分区设备名包含磁盘设备名，则认为属于该磁盘
+	// 例如：/dev/sda1 属于 /dev/sda
+	if partitionDevice == diskDevice {
+		return true
+	}
+
+	// 去除 /dev/ 前缀进行比较
+	partitionName := strings.TrimPrefix(partitionDevice, "/dev/")
+	diskName := strings.TrimPrefix(diskDevice, "/dev/")
+
+	return strings.HasPrefix(partitionName, diskName)
 }

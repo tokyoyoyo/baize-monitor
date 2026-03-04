@@ -22,7 +22,7 @@ type HardwareInfoModel struct {
 	HardwareInfoSnapshot request.HardwareInfoUploadRequest `json:"hardware_info_snapshot" gorm:"column:hardware_info_snapshot;type:jsonb;not null;serializer:json;"` // 硬件信息快照，使用JSONB存储
 
 	// 数据版本和校验
-	Version  string `json:"version" gorm:"column:version;size:50;not null;"`  // 数据格式版本
+	Version  string `json:"version" gorm:"column:version;size:50;not null;"`    // 数据格式版本
 	Checksum string `json:"checksum" gorm:"column:checksum;size:128;not null;"` // 数据校验和
 }
 
