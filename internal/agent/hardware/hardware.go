@@ -31,7 +31,7 @@ func (h *Hardware) GetData() (interface{}, error) {
 	hardwareInfo := h.registry.CollectAll()
 
 	// 设置收集时间戳
-	hardwareInfo.CollectedAt = time.Now().Format(time.RFC3339)
+	hardwareInfo.CollectedAt = time.Now()
 
 	return hardwareInfo, nil
 }

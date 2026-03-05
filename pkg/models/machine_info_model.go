@@ -11,7 +11,7 @@ type MachineInfos struct {
 	CreatedAt time.Time `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt time.Time `json:"updated_at" gorm:"column:updated_at"`
 
-	CollectedAt string `json:"collected_at" binding:"required"` // 收集时间，ISO8601 格式
+	CollectedAt time.Time `json:"collected_at" binding:"required"`
 
 	// 执行状态
 	Success bool   `json:"success" gorm:"column:success;not null;default:true;"` // 采集是否成功

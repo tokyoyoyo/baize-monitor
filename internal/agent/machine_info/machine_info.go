@@ -54,7 +54,7 @@ func (m *MachineInfo) GetData() (interface{}, error) {
 	info.Content.IPAddresses = ipAddresses
 
 	// 填入收集时间
-	info.CollectedAt = time.Now().Format(time.RFC3339)
+	info.CollectedAt = time.Now()
 
 	return info, nil
 }

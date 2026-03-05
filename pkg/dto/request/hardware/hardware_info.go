@@ -1,9 +1,11 @@
 package request
 
+import "time"
+
 // HardwareInfoRequest 硬件信息请求
 type HardwareInfoRequest struct {
 	// 收集时间戳
-	CollectedAt string `json:"collected_at" binding:"required"` // 收集时间，ISO8601 格式
+	CollectedAt time.Time `json:"collected_at" binding:"required"` // 收集时间，ISO8601 格式
 
 	// CPU 信息
 	CPUs CPURequest `json:"cpu" binding:"required"` // CPU 信息列表
