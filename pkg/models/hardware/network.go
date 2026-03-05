@@ -1,7 +1,6 @@
 package hardware
 
 import (
-	request "baize-monitor/pkg/dto/request/hardware"
 	"net"
 	"time"
 )
@@ -19,7 +18,7 @@ type NetworkInterface struct {
 	Success bool   `json:"success" gorm:"column:success;not null;default:true"` // 采集是否成功
 	Message string `json:"message" gorm:"column:message;type:text"`             // 执行消息（失败时记录错误信息）
 
-	Content []request.NetworkInterfaceInfo `json:"content" gorm:"column:content;type:jsonb;serializer:json;not null"` // 网络接口详细信息列表
+	// 相关字段，直接存结构体，会导致检索不方便
 
 	// 摘要信息
 	TotalCount    int `json:"total_count" gorm:"column:total_count"`       // 接口总数

@@ -1,7 +1,6 @@
 package hardware
 
 import (
-	request "baize-monitor/pkg/dto/request/hardware"
 	"net"
 	"time"
 )
@@ -19,7 +18,7 @@ type Memory struct {
 	Success bool   `json:"success" gorm:"column:success;not null;default:true"` // 采集是否成功
 	Message string `json:"message" gorm:"column:message;type:text"`             // 执行消息（失败时记录错误信息）
 
-	Content []request.MemoryModuleInfo `json:"content" gorm:"column:content;type:jsonb;serializer:json;"`
+	// 相关字段，直接存结构体，会导致检索不方便
 
 	// 摘要信息
 	TotalSize  int64  `json:"total_size"`                            // 总容量（字节）
