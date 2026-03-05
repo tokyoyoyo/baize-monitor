@@ -1,8 +1,9 @@
-package detectors
+package cpu
 
 import (
-	"baize-monitor/internal/agent/anomaly/check_items/cpu"
+	"baize-monitor/internal/agent/anomaly/utils"
 	"baize-monitor/pkg/dto/request"
+	"baize-monitor/pkg/models"
 
 	gopsutilcpu "github.com/shirou/gopsutil/v3/cpu"
 )
@@ -12,12 +13,12 @@ type cpuCoreCountMismatchDetector struct {
 }
 
 func init() {
-	cpu.RegisterDetector(&cpuCoreCountMismatchDetector{
+	RegisterDetector(&cpuCoreCountMismatchDetector{
 		expectedCores: 0,
 	})
 }
 
-func (d *cpuCoreCountMismatchDetector) DetectorType() string {
+func (d *cpuCoreCountMismatchDetector) CheckItemName() string {
 	return "cpu_core_count_mismatch"
 }
 
@@ -42,9 +43,10 @@ func (d *cpuCoreCountMismatchDetector) Detect() (request.AnomalyResult, error) {
 	}
 
 	if d.expectedCores > 0 && physicalCores != d.expectedCores {
-		return cpu.CreateAnomalyResult(
-			d.DetectorType(),
-			"warning",
+		return utils.CreateAnomalyResult(
+			models.CheckTypeCPU,
+			d.CheckItemName(),
+			models.AnomalyLevelWarning,
 			"CPU core count mismatch detected",
 			map[string]interface{}{
 				"expected_cores":        d.expectedCores,
@@ -57,9 +59,10 @@ func (d *cpuCoreCountMismatchDetector) Detect() (request.AnomalyResult, error) {
 	}
 
 	if logicalCores < physicalCores {
-		return cpu.CreateAnomalyResult(
-			d.DetectorType(),
-			"warning",
+		return utils.CreateAnomalyResult(
+			models.CheckTypeCPU,
+			d.CheckItemName(),
+			models.AnomalyLevelWarning,
 			"Logical cores less than physical cores - possible CPU degradation",
 			map[string]interface{}{
 				"physical_cores": physicalCores,

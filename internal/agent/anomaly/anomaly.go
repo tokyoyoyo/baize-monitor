@@ -3,24 +3,24 @@ package anomaly
 import (
 	"log"
 
-	"baize-monitor/internal/agent/anomaly/check_items"
+	"baize-monitor/internal/agent/anomaly/types"
 
-	"baize-monitor/internal/agent/anomaly/check_items/cpu"
-	_ "baize-monitor/internal/agent/anomaly/check_items/cpu/detectors"
-	"baize-monitor/internal/agent/anomaly/check_items/disk"
-	_ "baize-monitor/internal/agent/anomaly/check_items/disk/detectors"
-	"baize-monitor/internal/agent/anomaly/check_items/memory"
-	_ "baize-monitor/internal/agent/anomaly/check_items/memory/detectors"
-	"baize-monitor/internal/agent/anomaly/check_items/network"
-	_ "baize-monitor/internal/agent/anomaly/check_items/network/detectors"
+	"baize-monitor/internal/agent/anomaly/cpu"
+	_ "baize-monitor/internal/agent/anomaly/cpu"
+	"baize-monitor/internal/agent/anomaly/disk"
+	_ "baize-monitor/internal/agent/anomaly/disk"
+	"baize-monitor/internal/agent/anomaly/memory"
+	_ "baize-monitor/internal/agent/anomaly/memory"
+	"baize-monitor/internal/agent/anomaly/network"
+	_ "baize-monitor/internal/agent/anomaly/network"
 )
 
 type Anomaly struct {
-	registry *check_items.CheckerRegistry
+	registry *types.CheckerRegistry
 }
 
 func New(nodeName, targetIP string) *Anomaly {
-	registry := check_items.NewCheckerRegistry()
+	registry := types.NewCheckerRegistry()
 
 	// 注册所有检测器
 	registry.Register(cpu.NewCPUChecker())

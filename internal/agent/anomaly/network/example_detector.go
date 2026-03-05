@@ -2,13 +2,10 @@
 // 复制此文件作为模板来创建新的网络检测器
 // 文件名应该使用小划线，例如：network_packet_loss_detector.go
 
-package detectors
+package network
 
 import (
 	"baize-monitor/pkg/dto/request"
-	
-	// 如需使用，请取消注释下面的导入
-	// "baize-monitor/internal/agent/anomaly/check_items/network"
 )
 
 // networkExampleDetector 示例检测器结构体
@@ -29,9 +26,9 @@ func init() {
 }
 */
 
-// DetectorType 返回检测器类型标识符
+// CheckItemName 返回检测项名称
 // 命名规范：使用小写字母和下划线，例如：network_packet_loss
-func (d *networkExampleDetector) DetectorType() string {
+func (d *networkExampleDetector) CheckItemName() string {
 	return "network_example"
 }
 
@@ -61,9 +58,10 @@ func (d *networkExampleDetector) Detect() (request.AnomalyResult, error) {
 	
 	// 示例 3: 检查数据是否异常
 	// if packetLoss > d.threshold {
-	// 	return network.CreateAnomalyResult(  // 需要导入 network 包
-	// 		d.DetectorType(),
-	// 		"warning", // 级别：info, warning, critical
+	// 	return utils.CreateAnomalyResult(
+	// 		models.CheckTypeNetwork,
+	// 		d.CheckItemName(),
+	// 		models.AnomalyLevelWarning, // 级别：info, warning, critical
 	// 		"网络接口丢包严重",
 	// 		map[string]interface{}{
 	// 			"interface":   "eth0",

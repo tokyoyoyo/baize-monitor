@@ -2,13 +2,10 @@
 // 复制此文件作为模板来创建新的内存检测器
 // 文件名应该使用小写和下划线，例如：memory_temperature_detector.go
 
-package detectors
+package memory
 
 import (
 	"baize-monitor/pkg/dto/request"
-	
-	// 如需使用，请取消注释下面的导入
-	// "baize-monitor/internal/agent/anomaly/check_items/memory"
 )
 
 // memoryExampleDetector 示例检测器结构体
@@ -29,9 +26,9 @@ func init() {
 }
 */
 
-// DetectorType 返回检测器类型标识符
+// CheckItemName 返回检测项名称
 // 命名规范：使用小写字母和下划线，例如：memory_temperature
-func (d *memoryExampleDetector) DetectorType() string {
+func (d *memoryExampleDetector) CheckItemName() string {
 	return "memory_example"
 }
 
@@ -56,9 +53,10 @@ func (d *memoryExampleDetector) Detect() (request.AnomalyResult, error) {
 	
 	// 示例 3: 检查数据是否异常
 	// if count > d.threshold {
-	// 	return memory.CreateAnomalyResult(  // 需要导入 memory 包
-	// 		d.DetectorType(),
-	// 		"warning", // 级别：info, warning, critical
+	// 	return utils.CreateAnomalyResult(
+	// 		models.CheckTypeMemory,
+	// 		d.CheckItemName(),
+	// 		models.AnomalyLevelWarning, // 级别：info, warning, critical
 	// 		"内存错误计数超过阈值",
 	// 		map[string]interface{}{
 	// 			"error_count": count,

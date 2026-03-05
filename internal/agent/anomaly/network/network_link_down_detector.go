@@ -1,21 +1,22 @@
-package detectors
+package network
 
 import (
 	"os/exec"
 	"strings"
 
-	"baize-monitor/internal/agent/anomaly/check_items/network"
+	"baize-monitor/internal/agent/anomaly/utils"
 	"baize-monitor/pkg/dto/request"
+	"baize-monitor/pkg/models"
 )
 
 type networkLinkStatusDetector struct {
 }
 
 func init() {
-	network.RegisterDetector(&networkLinkStatusDetector{})
+	RegisterDetector(&networkLinkStatusDetector{})
 }
 
-func (d *networkLinkStatusDetector) DetectorType() string {
+func (d *networkLinkStatusDetector) CheckItemName() string {
 	return "network_link_down"
 }
 
@@ -47,9 +48,10 @@ func (d *networkLinkStatusDetector) Detect() (request.AnomalyResult, error) {
 			}
 
 			if iface != "" {
-				return network.CreateAnomalyResult(
-					d.DetectorType(),
-					"critical",
+				return utils.CreateAnomalyResult(
+					models.CheckTypeNetwork,
+					d.CheckItemName(),
+					models.AnomalyLevelCritical,
 					"Network interface link is down",
 					map[string]interface{}{
 						"interface": iface,

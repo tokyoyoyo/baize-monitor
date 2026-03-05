@@ -2,7 +2,7 @@
 // 复制此文件作为模板来创建新的 CPU 检测器
 // 文件名应该使用小写和下划线，例如：cpu_temperature_detector.go
 
-package detectors
+package cpu
 
 import (
 	"baize-monitor/pkg/dto/request"
@@ -26,9 +26,9 @@ func init() {
 }
 */
 
-// DetectorType 返回检测器类型标识符
+// CheckItemName 返回检测项名称
 // 命名规范：使用小写字母和下划线，例如：cpu_temperature
-func (d *cpuExampleDetector) DetectorType() string {
+func (d *cpuExampleDetector) CheckItemName() string {
 	return "cpu_example"
 }
 
@@ -56,9 +56,10 @@ func (d *cpuExampleDetector) Detect() (request.AnomalyResult, error) {
 
 	// 示例 3: 检查数据是否异常
 	// if someValue > d.threshold {
-	// 	return cpu.CreateAnomalyResult(
-	// 		d.DetectorType(),
-	// 		"warning", // 级别：info, warning, critical
+	// 	return utils.CreateAnomalyResult(
+	// 		models.CheckTypeCPU,
+	// 		d.CheckItemName(),
+	// 		models.AnomalyLevelWarning, // 级别：info, warning, critical
 	// 		"检测到异常",
 	// 		map[string]interface{}{
 	// 			"key": "value", // 额外数据

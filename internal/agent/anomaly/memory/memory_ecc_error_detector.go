@@ -1,4 +1,4 @@
-package detectors
+package memory
 
 import (
 	"bufio"
@@ -6,8 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"baize-monitor/internal/agent/anomaly/check_items/memory"
+	"baize-monitor/internal/agent/anomaly/utils"
 	"baize-monitor/pkg/dto/request"
+	"baize-monitor/pkg/models"
 )
 
 type memoryECCErrorDetector struct {
@@ -15,12 +16,12 @@ type memoryECCErrorDetector struct {
 }
 
 func init() {
-	memory.RegisterDetector(&memoryECCErrorDetector{
+	RegisterDetector(&memoryECCErrorDetector{
 		errorThreshold: 1,
 	})
 }
 
-func (d *memoryECCErrorDetector) DetectorType() string {
+func (d *memoryECCErrorDetector) CheckItemName() string {
 	return "memory_ecc_error"
 }
 
@@ -39,8 +40,8 @@ func (d *memoryECCErrorDetector) Detect() (request.AnomalyResult, error) {
 	scanner := bufio.NewScanner(strings.NewReader(string(output)))
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.Contains(line, "ecc_correctable_errors") || 
-		   strings.Contains(line, "ece_count") {
+		if strings.Contains(line, "ecc_correctable_errors") ||
+			strings.Contains(line, "ece_count") {
 			parts := strings.Fields(line)
 			if len(parts) > 0 {
 				if count, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
@@ -51,9 +52,10 @@ func (d *memoryECCErrorDetector) Detect() (request.AnomalyResult, error) {
 	}
 
 	if totalErrors >= d.errorThreshold {
-		return memory.CreateAnomalyResult(
-			d.DetectorType(),
-			"warning",
+		return utils.CreateAnomalyResult(
+			models.CheckTypeMemory,
+			d.CheckItemName(),
+			models.AnomalyLevelWarning,
 			"Memory ECC correctable errors detected",
 			map[string]interface{}{
 				"total_ecc_errors": totalErrors,

@@ -1,4 +1,4 @@
-package detectors
+package disk
 
 import (
 	"bufio"
@@ -6,8 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"baize-monitor/internal/agent/anomaly/check_items/disk"
+	"baize-monitor/internal/agent/anomaly/utils"
 	"baize-monitor/pkg/dto/request"
+	"baize-monitor/pkg/models"
 )
 
 type diskIOErrorDetector struct {
@@ -15,12 +16,12 @@ type diskIOErrorDetector struct {
 }
 
 func init() {
-	disk.RegisterDetector(&diskIOErrorDetector{
+	RegisterDetector(&diskIOErrorDetector{
 		errorThreshold: 100,
 	})
 }
 
-func (d *diskIOErrorDetector) DetectorType() string {
+func (d *diskIOErrorDetector) CheckItemName() string {
 	return "disk_io_error"
 }
 
@@ -48,9 +49,10 @@ func (d *diskIOErrorDetector) Detect() (request.AnomalyResult, error) {
 		}
 
 		if ioErrors > d.errorThreshold {
-			return disk.CreateAnomalyResult(
-				d.DetectorType(),
-				"warning",
+			return utils.CreateAnomalyResult(
+				models.CheckTypeDisk,
+				d.CheckItemName(),
+				models.AnomalyLevelWarning,
 				"Disk I/O errors detected",
 				map[string]interface{}{
 					"device":    device,
