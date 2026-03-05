@@ -61,7 +61,7 @@ func NewAgent(config *AgentConfig) *Agent {
 		metrics:     metrics.New(),
 		machineInfo: machine_info.NewMachineInfo(),
 		hardware:    hardware.New(),
-		anomaly:     anomaly.New(),
+		anomaly:     anomaly.New(config.NodeName, ""),
 		ctx:         ctx,
 		cancel:      cancel,
 	}

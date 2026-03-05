@@ -1,35 +1,49 @@
 package anomaly
 
-// Anomaly 异常检测模块
+import (
+	"log"
+
+	"baize-monitor/internal/agent/anomaly/check_items"
+
+	"baize-monitor/internal/agent/anomaly/check_items/cpu"
+	_ "baize-monitor/internal/agent/anomaly/check_items/cpu/detectors"
+	"baize-monitor/internal/agent/anomaly/check_items/disk"
+	_ "baize-monitor/internal/agent/anomaly/check_items/disk/detectors"
+	"baize-monitor/internal/agent/anomaly/check_items/memory"
+	_ "baize-monitor/internal/agent/anomaly/check_items/memory/detectors"
+	"baize-monitor/internal/agent/anomaly/check_items/network"
+	_ "baize-monitor/internal/agent/anomaly/check_items/network/detectors"
+)
+
 type Anomaly struct {
-	enabled bool
+	registry *check_items.CheckerRegistry
 }
 
-// New 创建异常检测模块
-func New() *Anomaly {
+func New(nodeName, targetIP string) *Anomaly {
+	registry := check_items.NewCheckerRegistry()
+
+	// 注册所有检测器
+	registry.Register(cpu.NewCPUChecker())
+	registry.Register(memory.NewMemoryChecker())
+	registry.Register(disk.NewDiskChecker())
+	registry.Register(network.NewNetworkChecker())
+
 	return &Anomaly{
-		enabled: true,
+		registry: registry,
 	}
 }
 
-// GetData 获取异常检测数据（实现 dataProvider 接口）
-func (a *Anomaly) GetData() (interface{}, error) {
-	if !a.enabled {
-		return nil, nil
-	}
-	
-	// TODO: 实现异常检测逻辑
-	return map[string]interface{}{
-		"status": "not_implemented",
-	}, nil
-}
-
-// Start 启动异常检测模块
 func (a *Anomaly) Start() error {
+	log.Println("Anomaly module started successfully")
 	return nil
 }
 
-// Stop 停止异常检测模块
 func (a *Anomaly) Stop() error {
+	log.Println("Anomaly module stopped")
 	return nil
+}
+
+func (a *Anomaly) GetData() (interface{}, error) {
+	anomalyReq := a.registry.CheckerALL()
+	return anomalyReq, nil
 }
