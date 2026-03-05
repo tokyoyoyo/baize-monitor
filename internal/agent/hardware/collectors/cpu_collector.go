@@ -23,7 +23,7 @@ func NewCPUCollector() *CPUCollector {
 }
 
 // Collect 收集 CPU 信息并填充到 hardwareInfo
-func (c *CPUCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) {
+func (c *CPUCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoRequest) {
 	cpuRequest := hardwareRequest.CPURequest{
 		Content: make([]hardwareRequest.CPUInfo, 0),
 		Summary: hardwareRequest.CPUSummary{},
@@ -56,7 +56,7 @@ func (c *CPUCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUploadR
 		cpuRequest.Message = "collected successfully"
 	}
 
-	hardwareInfo.CPUs = append(hardwareInfo.CPUs, cpuRequest)
+	hardwareInfo.CPUs = cpuRequest
 }
 
 // collectCPULinux 在 Linux 上使用 dmidecode 收集 CPU 信息

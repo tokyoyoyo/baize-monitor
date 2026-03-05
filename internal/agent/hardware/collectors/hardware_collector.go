@@ -8,7 +8,7 @@ import (
 type HardwareCollector interface {
 	// Collect 收集硬件信息并直接填充到 hardwareInfo
 	// 采集过程中的异常信息应记录到对应部件的 Success 和 Message 字段，而不是返回 error 中断整个流程
-	Collect(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest)
+	Collect(hardwareInfo *hardwareRequest.HardwareInfoRequest)
 }
 
 // Registry 收集器注册表
@@ -44,8 +44,8 @@ func (r *Registry) AutoDiscover() {
 
 // CollectAll 收集所有硬件信息
 // 即使个别采集器失败，也会继续执行其他采集器，并将异常信息记录到对应部件的 Success 和 Message 字段
-func (r *Registry) CollectAll() *hardwareRequest.HardwareInfoUploadRequest {
-	hardwareInfo := &hardwareRequest.HardwareInfoUploadRequest{}
+func (r *Registry) CollectAll() *hardwareRequest.HardwareInfoRequest {
+	hardwareInfo := &hardwareRequest.HardwareInfoRequest{}
 
 	for _, collector := range r.collectors {
 		collector.Collect(hardwareInfo)

@@ -23,7 +23,7 @@ func NewMemoryCollector() *MemoryCollector {
 }
 
 // Collect 收集内存信息并填充到 hardwareInfo
-func (m *MemoryCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) {
+func (m *MemoryCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoRequest) {
 	memoryRequest := hardwareRequest.MemoryRequest{
 		Content: make([]hardwareRequest.MemoryModuleInfo, 0),
 		Summary: hardwareRequest.MemorySummary{},
@@ -34,7 +34,7 @@ func (m *MemoryCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUplo
 	if err != nil {
 		memoryRequest.Success = false
 		memoryRequest.Message = fmt.Sprintf("failed to get memory info: %v", err)
-		hardwareInfo.Memory = &memoryRequest
+		hardwareInfo.Memory = memoryRequest
 		return
 	}
 
@@ -60,7 +60,7 @@ func (m *MemoryCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUplo
 		memoryRequest.Message = "collected successfully"
 	}
 
-	hardwareInfo.Memory = &memoryRequest
+	hardwareInfo.Memory = memoryRequest
 }
 
 // collectMemoryModulesLinux 在 Linux 上使用 dmidecode 收集内存条信息

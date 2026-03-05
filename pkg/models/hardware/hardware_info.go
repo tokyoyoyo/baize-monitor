@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// HardwareInfoModel 硬件信息表模型 - 用于数据库存储
-type HardwareInfoModel struct {
+// HardwareInfo 硬件信息表模型 - 用于数据库存储
+type HardwareInfo struct {
 	ID        int64     `json:"id" gorm:"primaryKey"`
 	CreatedAt time.Time `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt time.Time `json:"updated_at" gorm:"column:updated_at"`
@@ -19,7 +19,7 @@ type HardwareInfoModel struct {
 	CollectedAt time.Time `json:"collected_at" gorm:"column:collected_at;not null;comment:硬件信息收集时间"` // 硬件信息收集时间
 
 	// 硬件信息快照 - 使用JSONB存储复杂结构
-	HardwareInfoSnapshot request.HardwareInfoUploadRequest `json:"hardware_info_snapshot" gorm:"column:hardware_info_snapshot;type:jsonb;not null;serializer:json;"` // 硬件信息快照，使用JSONB存储
+	HardwareInfoSnapshot request.HardwareInfoRequest `json:"hardware_info_snapshot" gorm:"column:hardware_info_snapshot;type:jsonb;not null;serializer:json;"` // 硬件信息快照，使用JSONB存储
 
 	// 数据版本和校验
 	Version  string `json:"version" gorm:"column:version;size:50;not null;"`    // 数据格式版本
@@ -27,6 +27,6 @@ type HardwareInfoModel struct {
 }
 
 // TableName 设置表名
-func (HardwareInfoModel) TableName() string {
+func (HardwareInfo) TableName() string {
 	return "hardware_info"
 }

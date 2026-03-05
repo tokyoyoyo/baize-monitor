@@ -24,7 +24,7 @@ func NewDiskCollector() *DiskCollector {
 }
 
 // Collect 收集磁盘信息并填充到 hardwareInfo
-func (d *DiskCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) {
+func (d *DiskCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoRequest) {
 	diskRequest := hardwareRequest.DiskRequest{
 		Content: make([]hardwareRequest.DiskInfo, 0),
 		Summary: hardwareRequest.DiskSummary{},
@@ -64,7 +64,7 @@ func (d *DiskCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUpload
 		diskRequest.Message = "no disk devices found"
 	}
 
-	hardwareInfo.Disks = append(hardwareInfo.Disks, diskRequest)
+	hardwareInfo.Disks = diskRequest
 }
 
 // collectDisksLinux 在 Linux 上收集磁盘信息

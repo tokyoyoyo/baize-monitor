@@ -17,7 +17,7 @@ func NewNetworkCollector() *NetworkCollector {
 }
 
 // Collect 收集网络接口信息并填充到 hardwareInfo
-func (n *NetworkCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUploadRequest) {
+func (n *NetworkCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoRequest) {
 	networkRequest := hardwareRequest.NetworkInterfaceRequest{
 		Content: make([]hardwareRequest.NetworkInterfaceInfo, 0),
 		Summary: hardwareRequest.NetworkInterfaceSummary{},
@@ -28,7 +28,7 @@ func (n *NetworkCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUpl
 	if err != nil {
 		networkRequest.Success = false
 		networkRequest.Message = fmt.Sprintf("failed to get network interfaces: %v", err)
-		hardwareInfo.NetworkInterfaces = append(hardwareInfo.NetworkInterfaces, networkRequest)
+		hardwareInfo.NetworkInterfaces = networkRequest
 		return
 	}
 
@@ -87,5 +87,5 @@ func (n *NetworkCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoUpl
 		networkRequest.Message = "collected successfully"
 	}
 
-	hardwareInfo.NetworkInterfaces = append(hardwareInfo.NetworkInterfaces, networkRequest)
+	hardwareInfo.NetworkInterfaces = networkRequest
 }
