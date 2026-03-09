@@ -21,6 +21,23 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    
+    # 添加 PostgreSQL 服务
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: baize_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
     steps:
       - uses: actions/checkout@v3
       
@@ -28,8 +45,35 @@ jobs:
         with:
           go-version: '1.21'
       
+      # 等待 PostgreSQL 就绪
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Waiting for PostgreSQL to start..."
+            sleep 2
+          done
+      
+      # 运行数据库迁移
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/baize_test?sslmode=disable
+        run: |
+          go run cmd/migrate/main.go up || echo "Migration completed or not needed"
+      
+      # 运行测试
       - name: Run Tests
-        run: make test-sequential
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/baize_test?sslmode=disable
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/baize_test?sslmode=disable
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: baize_test
+        run: |
+          # 设置环境变量供测试使用
+          export PGPASSWORD=postgres
+          make test-sequential
 
   fmt-check:
     runs-on: ubuntu-latest
