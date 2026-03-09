@@ -56,12 +56,6 @@
 - [SuccessResponse](#successresponse) - 成功响应
 - [ErrorResponse](#errorresponse) - 错误响应
 
-### 📚 设计原则与最佳实践
-
-- [数据模型关系](#数据模型关系) - 表关系图
-- [设计原则](#设计原则) - 数据库、DTO、索引设计原则
-- [最佳实践](#最佳实践) - 查询优化、数据一致性、扩展性考虑
-
 ---
 
 [🔝 返回顶部](#目录)
@@ -74,36 +68,66 @@
 
 #### 表结构
 
-| 字段名 | 数据类型 | 约束 | 描述 |
-| :--- | :--- | :--- | :--- |
-| `id` | `BIGSERIAL` | `PRIMARY KEY` | 告警 ID |
-| `created_at` | `TIMESTAMP` | `NOT NULL` | 创建时间 |
-| `updated_at` | `TIMESTAMP` | `NOT NULL` | 更新时间 |
-| `parser_id` | `BIGINT` | `INDEX` | 解析器 ID（关联 bmc_trap_parsers.id） |
-| `alert_status` | `VARCHAR(100)` | `INDEX` | 告警状态：ACTIVE/CLEARED |
-| `trap_oid` | `VARCHAR(200)` | `INDEX` | Trap OID（告警类型标识） |
-| `source_ip` | `VARCHAR(45)` | `INDEX` | 告警源 IP 地址 |
-| `source_type` | `VARCHAR(100)` | `INDEX` | 告警源类型：BMC |
-| `vendor_code` | `VARCHAR(50)` | `INDEX` | 厂商标识代码（企业 OID 数字部分） |
-| `vendor_name` | `VARCHAR(100)` | | 厂商名称 |
-| `alert_level` | `VARCHAR(100)` | `INDEX` | 告警级别：critical/warning/info/notification |
-| `alert_time` | `TIMESTAMP` | `INDEX` | 告警发生时间 |
-| `component` | `VARCHAR(100)` | `INDEX` | 告警组件：CPU/MEMORY/STORAGE 等 |
-| `content` | `TEXT` | | 告警详细内容 |
-| `raw_data` | `TEXT` | | 原始 Trap 数据（JSON 格式） |
-| `trap_raw_time` | `VARCHAR(100)` | | 原始告警时间字符串 |
-| `variable_map` | `JSONB` | `NOT NULL` | OID 到值的映射关系 |
-| `enable_auto_close` | `BOOLEAN` | | 是否启用自动关闭 |
-| `trap_index` | `VARCHAR(200)` | `INDEX` | Trap 索引 OID（用于告警关联） |
-| `trap_status` | `VARCHAR(200)` | `INDEX` | Trap 状态 OID：Asserted/Deasserted |
-| `enable_contact_inter_component_alerts` | `BOOLEAN` | | 是否启用组件间关联告警 |
-| `identifier_of_the_same_component` | `VARCHAR(200)` | `INDEX` | 同一组件标识符 OID |
+| 字段名 | 数据类型 | 约束 | 索引类型 | 描述 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `BIGSERIAL` | `PRIMARY KEY` | - | 告警 ID |
+| `created_at` | `TIMESTAMP` | `NOT NULL` | - | 创建时间 |
+| `updated_at` | `TIMESTAMP` | `NOT NULL` | - | 更新时间 |
+| `parser_id` | `BIGINT` | `INDEX` | **单列** | 解析器 ID（关联 bmc_trap_parsers.id） |
+| `alert_status` | `VARCHAR(100)` | `INDEX` | **单列** | 告警状态：ACTIVE/CLEARED |
+| `trap_oid` | `VARCHAR(200)` | `INDEX` | **单列** | Trap OID（告警类型标识） |
+| `source_ip` | `VARCHAR(45)` | `INDEX` | **单列** | 告警源 IP 地址 |
+| `source_type` | `VARCHAR(100)` | `INDEX` | **单列** | 告警源类型：BMC |
+| `vendor_code` | `VARCHAR(50)` | `INDEX` | **单列** | 厂商标识代码（企业 OID 数字部分） |
+| `vendor_name` | `VARCHAR(100)` | - | - | 厂商名称 |
+| `alert_level` | `VARCHAR(100)` | `INDEX` | **单列** | 告警级别：critical/warning/info/notification |
+| `alert_time` | `TIMESTAMP` | `INDEX` | **单列** | 告警发生时间 |
+| `component` | `VARCHAR(100)` | `INDEX` | **单列** | 告警组件：CPU/MEMORY/STORAGE 等 |
+| `content` | `TEXT` | - | - | 告警详细内容 |
+| `raw_data` | `TEXT` | - | - | 原始 Trap 数据（JSON 格式） |
+| `trap_raw_time` | `VARCHAR(100)` | - | - | 原始告警时间字符串 |
+| `variable_map` | `JSONB` | `NOT NULL` | - | OID 到值的映射关系 |
+| `enable_auto_close` | `BOOLEAN` | - | - | 是否启用自动关闭 |
+| `trap_index` | `VARCHAR(200)` | `INDEX` | **单列** | Trap 索引 OID（用于告警关联） |
+| `trap_status` | `VARCHAR(200)` | `INDEX` | **单列** | Trap 状态 OID：Asserted/Deasserted |
+| `enable_contact_inter_component_alerts` | `BOOLEAN` | - | - | 是否启用组件间关联告警 |
+| `identifier_of_the_same_component` | `VARCHAR(200)` | `INDEX` | **单列** | 同一组件标识符 OID |
 
 #### 表说明
 
 **关联关系**
 - `parser_id`: 关联 `bmc_trap_parsers.id`，使用哪个解析器解析的 Trap
 - `variable_map`: JSONB 格式存储所有 OID 到值的映射，便于扩展
+
+**索引说明**
+
+当前表使用 **单列索引**（Single-Column Index），通过 GORM 的 `index` tag 自动创建：
+
+```go
+ParserID int64 `gorm:"index"`  // 创建单列 B-tree 索引
+```
+
+**索引列表**：
+- `idx_alerts_parser_id` - parser_id
+- `idx_alerts_alert_status` - alert_status
+- `idx_alerts_trap_oid` - trap_oid
+- `idx_alerts_source_ip` - source_ip
+- `idx_alerts_source_type` - source_type
+- `idx_alerts_vendor_code` - vendor_code
+- `idx_alerts_alert_level` - alert_level
+- `idx_alerts_alert_time` - alert_time
+- `idx_alerts_component` - component
+- `idx_alerts_trap_index` - trap_index
+- `idx_alerts_trap_status` - trap_status
+- `idx_alerts_identifier_of_the_same_component` - identifier_of_the_same_component
+
+**如需添加联合索引**，需要在代码中显式定义：
+
+```go
+// 示例：创建 (alert_status, alert_time) 联合索引
+AlertTime time.Time `gorm:"index:idx_status_time"`
+AlertStatus string   `gorm:"index:idx_status_time"`
+```
 
 **枚举值说明**
 
@@ -1166,100 +1190,6 @@ type ErrorResponse struct {
 │ permissions (JSONB) │
 └─────────────────────┘
 ```
-
----
-
-## 设计原则
-
-### 数据库设计原则
-
-1. **使用 GORM 管理数据库**
-   - 通过 GORM struct tag 定义字段和索引
-   - 使用 `gorm:"index"` 自动创建索引
-   - 使用 `gorm:"uniqueIndex"` 创建唯一索引
-   - 无需手动执行 SQL 创建索引
-
-2. **JSONB 灵活存储**
-   - 使用 JSONB 存储映射配置、变量映射等灵活结构，便于扩展
-   - 支持复杂数据结构的完整保存
-   - 新增字段无需修改表结构
-
-3. **软删除支持**
-   - 使用 `is_deleted` 字段支持数据软删除
-   - 保留历史数据，便于审计和恢复
-
-4. **时间戳追踪**
-   - 使用 `created_at`、`updated_at` 追踪数据变更
-   - GORM 自动维护这些字段
-
-5. **枚举值标准化**
-   - 使用字符串枚举而非数字，提高可读性
-   - 便于新增枚举值
-
-### DTO 设计原则
-
-1. **请求验证**
-   - 使用 `binding` 标签进行参数验证
-   - 必填字段和可选字段明确区分
-
-2. **指针可选**
-   - 使用指针类型表示可选字段
-   - nil 表示不使用该过滤条件
-
-3. **分页统一**
-   - 所有列表查询使用统一的分页参数结构
-
-4. **响应标准化**
-   - 使用统一的响应结构，包含分页信息
-
-5. **版本兼容**
-   - DTO 结构独立于数据库模型
-   - 支持 API 版本演进
-
-### 索引设计原则
-
-使用 GORM 的索引定义方式：
-
-```go
-// 基本索引
-TargetIP net.IP `gorm:"column:target_ip;type:inet;index"`
-
-// 唯一索引  
-Username string `gorm:"uniqueIndex;not null"`
-
-// 复合索引（在 model 中定义）
-func (User) TableName() string {
-    return "users"
-}
-
-// 或者使用 migrate 创建复合索引
-db.Exec("CREATE INDEX idx_users_name_email ON users(username, email)")
-```
-
----
-
-[🔝 返回顶部](#目录)
-
-## 最佳实践
-
-### 查询优化
-
-1. 使用复合索引覆盖常用查询组合
-2. 对 JSONB 字段使用 GIN 索引支持复杂查询
-3. 时间范围查询使用时区一致的 UTC 时间
-4. 大数据量表考虑分区策略
-
-### 数据一致性
-
-1. 使用事务保证关联数据的一致性
-2. 外键关系在应用层维护（Go 语言特性）
-3. 定期清理过期数据（根据业务需求配置保留策略）
-
-### 扩展性考虑
-
-1. JSONB 字段支持新字段无需修改表结构
-2. DTO 与模型分离，支持 API 演进
-3. 枚举值使用字符串，便于新增枚举值
 
 ---
 
