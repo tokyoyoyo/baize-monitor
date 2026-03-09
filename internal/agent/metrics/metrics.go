@@ -6,18 +6,21 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"baize-monitor/internal/agent/metrics/collectors"
+	"baize-monitor/internal/agent/metrics/registry"
 )
 
 // Metrics 指标监控模块
 type Metrics struct {
-	collectorRegistry *collectors.Registry
+	collectorRegistry *registry.Registry
 }
 
 // New 创建指标监控模块
 func New() *Metrics {
-	registry := collectors.NewRegistry()
-	// 自动发现并注册收集器
-	registry.AutoDiscover()
+	registry := registry.NewRegistry()
+
+	// 注册采集器
+	registry.Register(collectors.NewMemoryCollector())
+	registry.Register(collectors.NewCPUCollector())
 
 	return &Metrics{
 		collectorRegistry: registry,
