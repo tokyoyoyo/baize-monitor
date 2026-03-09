@@ -576,19 +576,19 @@ func TestBMCTrapParserHandler_List(t *testing.T) {
 		// Assertion
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Body.String(), "List retrieved successfully")
-		
+
 		// Verify returned data structure
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.Contains(t, response, "data")
-		
+
 		data := response["data"].(map[string]interface{})
 		assert.Contains(t, data, "list")
 		assert.Contains(t, data, "total")
 		assert.Contains(t, data, "page")
 		assert.Contains(t, data, "page_size")
-		
+
 		list := data["list"].([]interface{})
 		assert.True(t, len(list) >= 3, "Should have at least 3 items in list")
 	})

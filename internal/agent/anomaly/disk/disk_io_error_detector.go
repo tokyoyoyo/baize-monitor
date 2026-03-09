@@ -36,13 +36,13 @@ func (d *diskIOErrorDetector) Detect() (request.AnomalyResult, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		fields := strings.Fields(line)
-		
+
 		if len(fields) < 14 {
 			continue
 		}
 
 		device := fields[2]
-		
+
 		ioErrors, err := strconv.ParseInt(fields[13], 10, 64)
 		if err != nil {
 			continue

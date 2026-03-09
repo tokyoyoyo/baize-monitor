@@ -564,20 +564,20 @@ func TestRefreshToken_Success(t *testing.T) {
 	loginResp := httptest.NewRecorder()
 	loginReqObj, _ := http.NewRequest("POST", "/login", bytes.NewBuffer(loginData))
 	loginReqObj.Header.Set("Content-Type", "application/json")
-	
+
 	loginRouter := gin.Default()
 	loginRouter.POST("/login", handler.Login)
 	loginRouter.ServeHTTP(loginResp, loginReqObj)
-	
+
 	assert.Equal(t, http.StatusOK, loginResp.Code)
-	
+
 	var loginSuccessResp response.SuccessResponse
 	err = json.Unmarshal(loginResp.Body.Bytes(), &loginSuccessResp)
 	assert.NoError(t, err)
-	
+
 	loginRespBytes, err := json.Marshal(loginSuccessResp.Data)
 	assert.NoError(t, err)
-	
+
 	var loginRespData response.LoginResponse
 	err = json.Unmarshal(loginRespBytes, &loginRespData)
 	assert.NoError(t, err)
@@ -1034,5 +1034,3 @@ func TestListUsers_ExceedMaxPageSize(t *testing.T) {
 	assert.Equal(t, 400, errorResp.Code)
 	assert.Contains(t, errorResp.Message, "Invalid pagination parameters")
 }
-
-

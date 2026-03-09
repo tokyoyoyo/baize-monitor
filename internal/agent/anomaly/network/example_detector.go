@@ -34,19 +34,20 @@ func (d *networkExampleDetector) CheckItemName() string {
 
 // Detect 执行实际检测逻辑
 // 返回：AnomalyResult - 如果检测到异常返回有效结果，否则返回空结果
-//      error - 如果检测过程出错返回错误
+//
+//	error - 如果检测过程出错返回错误
 func (d *networkExampleDetector) Detect() (request.AnomalyResult, error) {
 	// ============================================
 	// 在这里实现你的检测逻辑
 	// ============================================
-	
+
 	// 示例 1: 读取网络接口统计
 	// file, err := os.Open("/proc/net/dev")
 	// if err != nil {
 	// 	return request.AnomalyResult{}, nil // 静默失败
 	// }
 	// defer file.Close()
-	
+
 	// 示例 2: 解析网络数据
 	// scanner := bufio.NewScanner(file)
 	// for scanner.Scan() {
@@ -55,7 +56,7 @@ func (d *networkExampleDetector) Detect() (request.AnomalyResult, error) {
 	// 		// 解析丢包计数
 	// 	}
 	// }
-	
+
 	// 示例 3: 检查数据是否异常
 	// if packetLoss > d.threshold {
 	// 	return utils.CreateAnomalyResult(
@@ -70,7 +71,7 @@ func (d *networkExampleDetector) Detect() (request.AnomalyResult, error) {
 	// 		},
 	// 	), nil
 	// }
-	
+
 	// ============================================
 	// 重要原则:
 	// 1. 零影响：只读内核缓存数据，不主动发送探测包
@@ -79,6 +80,6 @@ func (d *networkExampleDetector) Detect() (request.AnomalyResult, error) {
 	// 4. 轻量级：单次检测 < 100ms，内存 < 10MB
 	// 5. 避免使用 ping 等主动探测命令
 	// ============================================
-	
+
 	return request.AnomalyResult{}, nil
 }

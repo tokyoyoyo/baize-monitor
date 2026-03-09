@@ -110,7 +110,7 @@ func TestPGTableDistributedLocker_CleanupExpiredLocks(t *testing.T) {
 	var remainingLocks []models.DistributedLockRecord
 	err = client.DB.Find(&remainingLocks).Error
 	require.NoError(t, err)
-	
+
 	// Find the non-expired lock
 	nonExpiredFound := false
 	for _, lock := range remainingLocks {

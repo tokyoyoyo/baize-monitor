@@ -6,8 +6,8 @@ type DiskRequest struct {
 	Success bool   `json:"success"` // 采集是否成功
 	Message string `json:"message"` // 执行消息（失败时记录错误信息）
 
-	Content []DiskInfo      `json:"content"` // 磁盘信息列表
-	Summary DiskSummary     `json:"summary"` // 摘要信息
+	Content []DiskInfo  `json:"content"` // 磁盘信息列表
+	Summary DiskSummary `json:"summary"` // 摘要信息
 }
 
 // DiskInfo 磁盘信息

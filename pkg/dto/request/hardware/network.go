@@ -6,7 +6,7 @@ type NetworkInterfaceRequest struct {
 	Success bool   `json:"success"` // 采集是否成功
 	Message string `json:"message"` // 执行消息（失败时记录错误信息）
 
-	Content []NetworkInterfaceInfo `json:"content"` // 网络接口信息列表
+	Content []NetworkInterfaceInfo  `json:"content"` // 网络接口信息列表
 	Summary NetworkInterfaceSummary `json:"summary"` // 摘要信息
 }
 
@@ -38,7 +38,7 @@ type NetworkInterfaceInfo struct {
 
 // NetworkInterfaceSummary 网络接口摘要信息
 type NetworkInterfaceSummary struct {
-	TotalCount   int `json:"total_count"`   // 接口总数
+	TotalCount    int `json:"total_count"`    // 接口总数
 	PhysicalCount int `json:"physical_count"` // 物理接口数
 	VirtualCount  int `json:"virtual_count"`  // 虚拟接口数
 	ActiveCount   int `json:"active_count"`   // 活跃接口数

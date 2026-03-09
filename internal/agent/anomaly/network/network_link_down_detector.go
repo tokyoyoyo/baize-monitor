@@ -33,8 +33,8 @@ func (d *networkLinkStatusDetector) Detect() (request.AnomalyResult, error) {
 			continue
 		}
 
-		if strings.Contains(line, "state DOWN") && 
-		   !strings.Contains(line, "lo:") {
+		if strings.Contains(line, "state DOWN") &&
+			!strings.Contains(line, "lo:") {
 			parts := strings.Fields(line)
 			iface := ""
 			for i, part := range parts {
