@@ -1,47 +1,43 @@
 package hardware
 
 import (
-	"time"
-
 	"baize-monitor/internal/agent/hardware/collectors"
+	"baize-monitor/internal/agent/hardware/types"
 )
 
-// Hardware 硬件信息收集器
 type Hardware struct {
-	registry *collectors.Registry
+	registry *types.CollectorRegistry
 	enabled  bool
 }
 
-// New 创建硬件信息收集器
 func New() *Hardware {
-	registry := collectors.NewRegistry()
-	registry.AutoDiscover()
+	registry := types.NewCollectorRegistry()
+
+	registry.Register(collectors.NewCPUCollector())
+	registry.Register(collectors.NewMemoryCollector())
+	registry.Register(collectors.NewDiskCollector())
+	registry.Register(collectors.NewNetworkCollector())
+
 	return &Hardware{
 		registry: registry,
 		enabled:  true,
 	}
 }
 
-// GetData 获取硬件信息数据（实现 dataProvider 接口）
 func (h *Hardware) GetData() (interface{}, error) {
 	if !h.enabled {
 		return nil, nil
 	}
 
-	hardwareInfo := h.registry.CollectAll()
-
-	// 设置收集时间戳
-	hardwareInfo.CollectedAt = time.Now()
+	hardwareInfo := h.registry.CollectAllWithTimestamp()
 
 	return hardwareInfo, nil
 }
 
-// Start 启动（空实现，保持接口一致）
 func (h *Hardware) Start() error {
 	return nil
 }
 
-// Stop 停止（空实现，保持接口一致）
 func (h *Hardware) Stop() error {
 	return nil
 }

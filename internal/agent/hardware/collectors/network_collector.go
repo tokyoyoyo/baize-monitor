@@ -8,22 +8,18 @@ import (
 	hardwareRequest "baize-monitor/pkg/dto/request/hardware"
 )
 
-// NetworkCollector 网络接口信息收集器
 type NetworkCollector struct{}
 
-// NewNetworkCollector 创建网络接口信息收集器
 func NewNetworkCollector() *NetworkCollector {
 	return &NetworkCollector{}
 }
 
-// Collect 收集网络接口信息并填充到 hardwareInfo
 func (n *NetworkCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoRequest) {
 	networkRequest := hardwareRequest.NetworkInterfaceRequest{
 		Content: make([]hardwareRequest.NetworkInterfaceInfo, 0),
 		Summary: hardwareRequest.NetworkInterfaceSummary{},
 	}
 
-	// 获取网络接口信息
 	interfaces, err := net.Interfaces()
 	if err != nil {
 		networkRequest.Success = false
@@ -51,7 +47,6 @@ func (n *NetworkCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoReq
 			PCIAddress:   "",
 		}
 
-		// 判断是否为虚拟接口
 		if strings.Contains(iface.Name, "docker") ||
 			strings.Contains(iface.Name, "veth") ||
 			strings.Contains(iface.Name, "br-") {
@@ -61,7 +56,6 @@ func (n *NetworkCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoReq
 			networkRequest.Summary.PhysicalCount++
 		}
 
-		// 获取 IP 地址
 		addrs, err := iface.Addrs()
 		if err != nil {
 			networkInterface.Message = fmt.Sprintf("%s; failed to get addresses: %v", networkInterface.Message, err)
@@ -81,7 +75,6 @@ func (n *NetworkCollector) Collect(hardwareInfo *hardwareRequest.HardwareInfoReq
 		networkRequest.Summary.TotalCount++
 	}
 
-	// 如果采集成功但没有设置 Success 字段
 	if !networkRequest.Success && networkRequest.Message == "" {
 		networkRequest.Success = true
 		networkRequest.Message = "collected successfully"
