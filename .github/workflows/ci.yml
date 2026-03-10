@@ -73,7 +73,8 @@ jobs:
         run: |
           # 设置环境变量供测试使用
           export PGPASSWORD=postgres
-          make test-sequential
+          # 使用 -count=1 禁用缓存，-p 1 包级别串行，-parallel=1 测试函数级别串行
+          go test -v -count=1 -p 1 -parallel=1 ./...
 
   fmt-check:
     runs-on: ubuntu-latest
