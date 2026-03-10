@@ -171,7 +171,7 @@ func LoadTestMockServerConfig() (*ServerConfig, error) {
 	user := getEnv("PGUSER", "postgres")
 	password := getEnv("PGPASSWORD", "qwer1234")
 	database := getEnv("PGDATABASE", "baize_test")
-	
+
 	return &ServerConfig{
 		PostGresConfig: &PostGresConfig{
 			Host:      host,
