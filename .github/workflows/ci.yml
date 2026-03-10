@@ -22,7 +22,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
-    # 添加 PostgreSQL 服务
+    # Add PostgreSQL service
     services:
       postgres:
         image: postgres:15
@@ -45,7 +45,7 @@ jobs:
         with:
           go-version: '1.21'
       
-      # 等待 PostgreSQL 就绪
+      # Wait for PostgreSQL to be ready
       - name: Wait for PostgreSQL to be ready
         run: |
           until pg_isready -h localhost -p 5432 -U postgres; do
@@ -53,14 +53,14 @@ jobs:
             sleep 2
           done
       
-      # 运行数据库迁移
+      # Run database migrations
       - name: Run database migrations
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/baize_test?sslmode=disable
         run: |
           go run cmd/migrate/main.go up || echo "Migration completed or not needed"
       
-      # 运行测试
+      # Run tests with full sequential mode
       - name: Run Tests
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/baize_test?sslmode=disable
@@ -71,9 +71,9 @@ jobs:
           PGPASSWORD: postgres
           PGDATABASE: baize_test
         run: |
-          # 设置环境变量供测试使用
+          # Set environment variables for tests
           export PGPASSWORD=postgres
-          # 使用 -count=1 禁用缓存，-p 1 包级别串行，-parallel=1 测试函数级别串行
+          # Use -count=1 to disable cache, -p 1 for package-level serial, -parallel=1 for test-level serial
           go test -v -count=1 -p 1 -parallel=1 ./...
 
   fmt-check:
