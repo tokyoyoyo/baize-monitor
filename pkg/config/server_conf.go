@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -163,16 +165,40 @@ func LoadServerConfig(configPath string) (*ServerConfig, error) {
 }
 
 func LoadTestMockServerConfig() (*ServerConfig, error) {
+	// Check for environment variables first (for CI/CD)
+	host := getEnv("PGHOST", "localhost")
+	port := getEnvInt("PGPORT", 5432)
+	user := getEnv("PGUSER", "postgres")
+	password := getEnv("PGPASSWORD", "qwer1234")
+	database := getEnv("PGDATABASE", "baize_test")
+	
 	return &ServerConfig{
 		PostGresConfig: &PostGresConfig{
-			Host:      "localhost",
-			Port:      5432,
-			User:      "postgres",
-			Password:  "qwer1234",
-			Database:  "baize_test",
+			Host:      host,
+			Port:      port,
+			User:      user,
+			Password:  password,
+			Database:  database,
 			SSLMode:   "disable",
 			MaxConns:  10,
 			IdleConns: 5,
 		},
 	}, nil
+}
+
+// Helper functions to read environment variables
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
 }
